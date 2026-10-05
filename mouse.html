@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProcessingJS Mouse Rectangle Editor</title>
+<title>ProcessingJS Mouse Rectangle Converter</title>
 <style>
 * {
     box-sizing: border-box;
@@ -15,93 +15,81 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #151515;
+    background: #171717;
     color: white;
     font-family: Arial, sans-serif;
 }
 
-#app {
-    display: flex;
-    width: 100%;
+#toolbar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 175px;
     height: 100%;
-}
-
-#sidebar {
-    width: 180px;
-    min-width: 180px;
-    height: 100%;
-    background: #202020;
+    background: #222;
     border-right: 1px solid #444;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
+    padding: 8px;
     z-index: 100;
+    overflow-y: auto;
 }
 
-#sidebar button {
+button {
     width: 100%;
-    min-height: 38px;
     background: #333;
     color: white;
-    border: 1px solid #555;
+    border: 1px solid #666;
     border-radius: 5px;
+    padding: 9px 8px;
+    margin-bottom: 7px;
     cursor: pointer;
-    font-size: 13px;
 }
 
-#sidebar button:hover {
-    background: #414141;
+button:hover {
+    background: #444;
 }
 
-#sidebar button.active {
+button.active {
     background: #1267a5;
     border-color: #63b8ff;
 }
 
-#sizeBox {
+#sizeSection {
     border-top: 1px solid #444;
     margin-top: 5px;
     padding-top: 10px;
 }
 
-#sizeBox label {
+#sizeSection label {
     display: block;
     font-size: 12px;
     color: #aaa;
     margin-bottom: 3px;
 }
 
-#sizeBox input {
+#sizeSection input {
     width: 100%;
     height: 30px;
-    margin-bottom: 7px;
-    background: #111;
-    color: white;
+    margin-bottom: 8px;
+    padding: 4px 7px;
     border: 1px solid #555;
     border-radius: 4px;
-    padding: 5px 7px;
-}
-
-#main {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    height: 100%;
+    background: #111;
+    color: white;
 }
 
 #editor {
     position: absolute;
-    inset: 0;
-    width: 100%;
+    left: 175px;
+    top: 0;
+    width: calc(100% - 175px);
     height: 100%;
-    padding: 15px;
+    background: #111;
+    color: #eee;
     border: 0;
     outline: 0;
     resize: none;
-    background: #101010;
-    color: #eee;
-    font: 14px/1.45 monospace;
+    padding: 15px;
+    font: 14px/1.4 monospace;
     tab-size: 4;
     white-space: pre;
     overflow: auto;
@@ -109,10 +97,13 @@ body {
 
 #stage {
     position: absolute;
-    inset: 0;
+    left: 175px;
+    top: 0;
+    width: calc(100% - 175px);
+    height: 100%;
     display: none;
+    background: #222;
     overflow: hidden;
-    background: #252525;
 }
 
 #program {
@@ -124,7 +115,8 @@ body {
 
 #overlay {
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
@@ -132,13 +124,12 @@ body {
 
 #info {
     position: absolute;
-    left: 10px;
-    top: 10px;
+    left: 12px;
+    top: 12px;
     background: rgba(0, 0, 0, 0.82);
-    border: 1px solid #555;
+    padding: 8px 10px;
     border-radius: 5px;
-    padding: 7px 9px;
-    font: 12px monospace;
+    font: 13px monospace;
     display: none;
     z-index: 20;
     pointer-events: none;
@@ -148,37 +139,34 @@ body {
     position: absolute;
     right: 10px;
     top: 10px;
-    width: 310px;
+    width: 300px;
     max-height: calc(100% - 20px);
     overflow-y: auto;
     display: none;
     flex-direction: column;
     gap: 8px;
-    z-index: 40;
-    pointer-events: none;
+    z-index: 30;
 }
 
 .outputBox {
-    background: rgba(15, 15, 15, 0.95);
+    background: rgba(16, 16, 16, 0.96);
     border: 1px solid #555;
-    border-radius: 6px;
+    border-radius: 5px;
     overflow: hidden;
-    pointer-events: auto;
 }
 
 .outputTitle {
-    padding: 7px 9px;
     background: #292929;
     border-bottom: 1px solid #444;
-    font-size: 12px;
-    font-weight: bold;
+    padding: 7px 9px;
+    font: bold 12px Arial, sans-serif;
 }
 
 .outputText {
+    display: block;
     width: 100%;
     min-height: 70px;
-    max-height: 250px;
-    display: block;
+    max-height: 240px;
     resize: vertical;
     border: 0;
     outline: 0;
@@ -190,70 +178,65 @@ body {
 
 #contextMenu {
     position: fixed;
-    display: none;
     width: 145px;
-    background: #252525;
+    display: none;
+    background: #292929;
     border: 1px solid #555;
     border-radius: 5px;
     padding: 4px;
     z-index: 1000;
-    box-shadow: 0 5px 18px rgba(0,0,0,0.5);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.5);
 }
 
 #contextMenu button {
-    display: block;
-    width: 100%;
-    background: transparent;
-    color: white;
+    margin: 0;
     border: 0;
+    border-radius: 3px;
+    background: transparent;
     text-align: left;
     padding: 8px;
-    border-radius: 3px;
-    cursor: pointer;
 }
 
 #contextMenu button:hover {
     background: #1267a5;
 }
 
-#contextMenu .danger:hover {
-    background: #9b3030;
+#contextMenu .delete:hover {
+    background: #a52a2a;
 }
 
 #status {
-    margin-top: auto;
     color: #777;
     font: 10px monospace;
-    line-height: 1.3;
+    margin-top: 5px;
     word-break: break-word;
 }
 </style>
 </head>
+
 <body>
 
-<div id="app">
-    <aside id="sidebar">
-        <button id="runButton">Run</button>
-        <button id="editButton">Edit Code</button>
-        <button id="normalButton" class="active">Normal Mode</button>
-        <button id="rectButton">Rect Mode</button>
-        <button id="editRectButton">Edit Rects</button>
-        <button id="printButton">Print / Copy</button>
-        <button id="clearButton">Clear Rects</button>
+<div id="toolbar">
+    <button id="runButton">Run</button>
+    <button id="editButton">Edit Code</button>
+    <button id="normalButton" class="active">Normal Mode</button>
+    <button id="rectButton">Rect Mode</button>
+    <button id="editRectButton">Edit Rects</button>
+    <button id="printButton">Print / Copy</button>
+    <button id="clearButton">Clear</button>
 
-        <div id="sizeBox">
-            <label for="widthInput">Canvas Width</label>
-            <input id="widthInput" type="number" min="1" step="1" value="400">
+    <div id="sizeSection">
+        <label for="widthInput">Canvas Width</label>
+        <input id="widthInput" type="number" min="1" value="400">
 
-            <label for="heightInput">Canvas Height</label>
-            <input id="heightInput" type="number" min="1" step="1" value="400">
-        </div>
+        <label for="heightInput">Canvas Height</label>
+        <input id="heightInput" type="number" min="1" value="400">
+    </div>
 
-        <div id="status"></div>
-    </aside>
+    <div id="status"></div>
+</div>
 
-    <main id="main">
-        <textarea id="editor" spellcheck="false">size(400, 400);
+<textarea id="editor" spellcheck="false">size(400, 400);
 background(220);
 
 fill(255, 0, 0);
@@ -272,29 +255,27 @@ function mousePressed() {
     }
 }</textarea>
 
-        <div id="stage">
-            <iframe id="program" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-            <canvas id="overlay"></canvas>
-            <div id="info"></div>
+<div id="stage">
+    <iframe id="program" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+    <canvas id="overlay"></canvas>
+    <div id="info"></div>
 
-            <div id="outputs">
-                <div id="originalBox" class="outputBox">
-                    <div class="outputTitle">Originally</div>
-                    <textarea id="originalOutput" class="outputText" readonly></textarea>
-                </div>
-
-                <div id="updatedBox" class="outputBox">
-                    <div class="outputTitle">Updated</div>
-                    <textarea id="updatedOutput" class="outputText" readonly></textarea>
-                </div>
-
-                <div id="newBox" class="outputBox">
-                    <div class="outputTitle">New</div>
-                    <textarea id="newOutput" class="outputText" readonly></textarea>
-                </div>
-            </div>
+    <div id="outputs">
+        <div id="originalBox" class="outputBox">
+            <div class="outputTitle">Originally</div>
+            <textarea id="originalOutput" class="outputText" readonly></textarea>
         </div>
-    </main>
+
+        <div id="updatedBox" class="outputBox">
+            <div class="outputTitle">Updated</div>
+            <textarea id="updatedOutput" class="outputText" readonly></textarea>
+        </div>
+
+        <div id="newBox" class="outputBox">
+            <div class="outputTitle">New</div>
+            <textarea id="newOutput" class="outputText" readonly></textarea>
+        </div>
+    </div>
 </div>
 
 <div id="contextMenu">
@@ -302,7 +283,7 @@ function mousePressed() {
     <button id="cutButton">Cut</button>
     <button id="copyButton">Copy</button>
     <button id="pasteButton">Paste</button>
-    <button id="deleteButton" class="danger">Delete</button>
+    <button id="deleteButton" class="delete">Delete</button>
 </div>
 
 <script>
@@ -310,13 +291,15 @@ const editor = document.getElementById("editor");
 const stage = document.getElementById("stage");
 const program = document.getElementById("program");
 const overlay = document.getElementById("overlay");
-const ctx = overlay.getContext("2d", { alpha: true });
+const ctx = overlay.getContext("2d");
 
 const info = document.getElementById("info");
 const outputs = document.getElementById("outputs");
+
 const originalBox = document.getElementById("originalBox");
 const updatedBox = document.getElementById("updatedBox");
 const newBox = document.getElementById("newBox");
+
 const originalOutput = document.getElementById("originalOutput");
 const updatedOutput = document.getElementById("updatedOutput");
 const newOutput = document.getElementById("newOutput");
@@ -353,6 +336,7 @@ let startX = 0;
 let startY = 0;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+
 let resizeStartX = 0;
 let resizeStartY = 0;
 let resizeOriginal = null;
@@ -360,21 +344,18 @@ let resizeOriginal = null;
 let canvasWidth = 400;
 let canvasHeight = 400;
 
-let drawQueued = false;
-let currentTempRectangle = null;
+let tempRectangle = null;
+let drawPending = false;
 
-const MIN_RECT_SIZE = 2;
-const RESIZE_HANDLE = 8;
-
-function queueDraw() {
-    if (drawQueued) {
+function requestDraw() {
+    if (drawPending) {
         return;
     }
 
-    drawQueued = true;
+    drawPending = true;
 
     requestAnimationFrame(function() {
-        drawQueued = false;
+        drawPending = false;
         drawRectangles();
     });
 }
@@ -383,20 +364,9 @@ function setStatus(text) {
     status.textContent = text;
 }
 
-function escapeHTML(value) {
-    return value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
-
-function hasSizeCall(code) {
-    return /\bsize\s*\(/.test(code);
-}
-
 function getCanvasSize() {
-    let width = parseInt(widthInput.value, 10);
-    let height = parseInt(heightInput.value, 10);
+    let width = Number(widthInput.value);
+    let height = Number(heightInput.value);
 
     if (!Number.isFinite(width) || width < 1) {
         width = 400;
@@ -407,56 +377,40 @@ function getCanvasSize() {
     }
 
     return {
-        width,
-        height
+        width: Math.round(width),
+        height: Math.round(height)
     };
 }
 
+function hasSizeCall(code) {
+    return /\bsize\s*\(/.test(code);
+}
+
 function isFullHTML(code) {
-    const head = code.slice(0, 5000);
+    const beginning = code.slice(0, 4000);
 
     return (
-        /<!doctype\s+html/i.test(head) ||
-        /<html(?:\s|>)/i.test(head) ||
-        /<body(?:\s|>)/i.test(head)
+        /<!doctype\s+html/i.test(beginning) ||
+        /<html(?:\s|>)/i.test(beginning) ||
+        /<body(?:\s|>)/i.test(beginning)
     );
 }
 
-function injectSizeIntoProcessingHTML(html, width, height) {
-    if (hasSizeCall(html)) {
-        return html;
-    }
-
-    const canvasPattern = /<canvas\b([^>]*)>/i;
-    const match = html.match(canvasPattern);
-
-    if (match) {
-        const attributes = match[1]
-            .replace(/\swidth\s*=\s*["'][^"']*["']/gi, "")
-            .replace(/\sheight\s*=\s*["'][^"']*["']/gi, "");
-
-        const replacement =
-            "<canvas" +
-            attributes +
-            ' width="' + width + '"' +
-            ' height="' + height + '">';
-
-        return html.replace(canvasPattern, replacement);
-    }
-
-    return html;
+function escapeScriptEnd(code) {
+    return code.replace(/<\/script/gi, "<\\/script");
 }
 
-function createProcessingHTML(source, width, height) {
+function createProcessingHTML(source) {
     const sizeCode = hasSizeCall(source)
         ? ""
-        : "size(" + width + ", " + height + ");";
+        : "size(" + canvasWidth + ", " + canvasHeight + ");";
+
+    const safeSource = escapeScriptEnd(source);
 
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ProcessingJS Program</title>
 <style>
 html,body {
     margin:0;
@@ -469,44 +423,70 @@ canvas {
 </style>
 </head>
 <body>
-<canvas id="mycanvas" width="${width}" height="${height}"></canvas>
+<canvas id="mycanvas" width="${canvasWidth}" height="${canvasHeight}"></canvas>
 <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"><\\/script>
 <script>
 var programCode = function(processingInstance) {
     with (processingInstance) {
         ${sizeCode}
-        ${source}
+        ${safeSource}
     }
 };
 
 var canvas = document.getElementById("mycanvas");
-new Processing(canvas, programCode);
+var processingInstance = new Processing(canvas, programCode);
 <\\/script>
 </body>
 </html>`;
+}
+
+function prepareFullHTML(source) {
+    if (hasSizeCall(source)) {
+        return escapeScriptEnd(source);
+    }
+
+    let result = escapeScriptEnd(source);
+
+    const canvasRegex = /<canvas\b([^>]*)>/i;
+    const match = result.match(canvasRegex);
+
+    if (match) {
+        let attributes = match[1];
+
+        attributes = attributes
+            .replace(/\swidth\s*=\s*["'][^"']*["']/gi, "")
+            .replace(/\sheight\s*=\s*["'][^"']*["']/gi, "");
+
+        const canvas =
+            "<canvas" +
+            attributes +
+            ' width="' + canvasWidth + '"' +
+            ' height="' + canvasHeight + '">';
+
+        result = result.replace(
+            canvasRegex,
+            canvas
+        );
+
+        return result;
+    }
+
+    return result;
 }
 
 function getProgramHTML() {
     const source = editor.value;
 
     if (isFullHTML(source)) {
-        return injectSizeIntoProcessingHTML(
-            source,
-            canvasWidth,
-            canvasHeight
-        );
+        return prepareFullHTML(source);
     }
 
-    return createProcessingHTML(
-        source,
-        canvasWidth,
-        canvasHeight
-    );
+    return createProcessingHTML(source);
 }
 
 function findMatchingBrace(text, openIndex) {
     let depth = 0;
-    let quote = null;
+    let quote = "";
     let escaped = false;
     let lineComment = false;
     let blockComment = false;
@@ -536,7 +516,7 @@ function findMatchingBrace(text, openIndex) {
             } else if (c === "\\") {
                 escaped = true;
             } else if (c === quote) {
-                quote = null;
+                quote = "";
             }
             continue;
         }
@@ -553,7 +533,11 @@ function findMatchingBrace(text, openIndex) {
             continue;
         }
 
-        if (c === "\"" || c === "'" || c === "`") {
+        if (
+            c === "\"" ||
+            c === "'" ||
+            c === "`"
+        ) {
             quote = c;
             continue;
         }
@@ -572,47 +556,93 @@ function findMatchingBrace(text, openIndex) {
     return -1;
 }
 
-function getMouseHandlerBodies(source) {
-    const handlers = [];
-    const pattern = /\b(?:mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*=\s*function\s*\([^)]*\)\s*\{|\bfunction\s+(?:mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*\([^)]*\)\s*\{/g;
+function getMouseFunctionBodies(source) {
+    const bodies = [];
+
+    const pattern =
+        /(?:function\s+)?(mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*(?:=\s*function)?\s*\([^)]*\)\s*\{/g;
 
     let match;
 
     while ((match = pattern.exec(source)) !== null) {
-        const openBrace = source.indexOf("{", match.index);
+        const openBrace =
+            source.indexOf(
+                "{",
+                match.index
+            );
 
         if (openBrace < 0) {
             continue;
         }
 
-        const closeBrace = findMatchingBrace(source, openBrace);
+        const closeBrace =
+            findMatchingBrace(
+                source,
+                openBrace
+            );
 
         if (closeBrace < 0) {
             continue;
         }
 
-        handlers.push(source.slice(openBrace + 1, closeBrace));
+        bodies.push(
+            source.slice(
+                openBrace + 1,
+                closeBrace
+            )
+        );
 
-        pattern.lastIndex = closeBrace + 1;
+        pattern.lastIndex =
+            closeBrace + 1;
     }
 
-    return handlers;
+    return bodies;
+}
+
+function extractProcessingScript(source) {
+    if (!isFullHTML(source)) {
+        return source;
+    }
+
+    const result = [];
+    const pattern =
+        /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+
+    let match;
+
+    while ((match = pattern.exec(source)) !== null) {
+        if (
+            /\bmousePressed\b/.test(match[1]) ||
+            /\bmouseClicked\b/.test(match[1]) ||
+            /\bmouseReleased\b/.test(match[1]) ||
+            /\bmouseDragged\b/.test(match[1]) ||
+            /\bmouseMoved\b/.test(match[1])
+        ) {
+            result.push(match[1]);
+        }
+    }
+
+    return result.join("\n");
 }
 
 function parseMouseRectangles(source) {
-    const handlers = getMouseHandlerBodies(source);
+    const bodies =
+        getMouseFunctionBodies(
+            extractProcessingScript(source)
+        );
 
-    if (handlers.length === 0) {
-        return [];
-    }
+    const result = [];
 
-    const found = [];
-    const conditionPattern = /\bif\s*\(([^{}]*)\)/g;
+    for (const body of bodies) {
+        const ifPattern =
+            /\bif\s*\(([^{}]*)\)/g;
 
-    for (const body of handlers) {
         let match;
 
-        while ((match = conditionPattern.exec(body)) !== null) {
+        while (
+            (match =
+                ifPattern.exec(body)) !== null
+        ) {
             const condition = match[1];
 
             if (
@@ -625,48 +655,82 @@ function parseMouseRectangles(source) {
             const xValues = [];
             const yValues = [];
 
-            const xPattern = /mouseX\s*(<=|>=|<|>)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
-            const yPattern = /mouseY\s*(<=|>=|<|>)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+            const xPattern =
+                /mouseX\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+
+            const yPattern =
+                /mouseY\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
 
             let xMatch;
             let yMatch;
 
-            while ((xMatch = xPattern.exec(condition)) !== null) {
+            while (
+                (xMatch =
+                    xPattern.exec(condition)) !== null
+            ) {
                 xValues.push({
                     operator: xMatch[1],
                     value: Number(xMatch[2])
                 });
             }
 
-            while ((yMatch = yPattern.exec(condition)) !== null) {
+            while (
+                (yMatch =
+                    yPattern.exec(condition)) !== null
+            ) {
                 yValues.push({
                     operator: yMatch[1],
                     value: Number(yMatch[2])
                 });
             }
 
-            if (xValues.length < 2 || yValues.length < 2) {
+            if (
+                xValues.length < 2 ||
+                yValues.length < 2
+            ) {
                 continue;
             }
 
-            let minX = Infinity;
-            let maxX = -Infinity;
-            let minY = Infinity;
-            let maxY = -Infinity;
+            let minX = -Infinity;
+            let maxX = Infinity;
+            let minY = -Infinity;
+            let maxY = Infinity;
 
             for (const item of xValues) {
-                if (item.operator === ">=" || item.operator === ">") {
-                    minX = Math.max(minX, item.value);
+                if (
+                    item.operator === ">=" ||
+                    item.operator === ">"
+                ) {
+                    minX =
+                        Math.max(
+                            minX,
+                            item.value
+                        );
                 } else {
-                    maxX = Math.min(maxX, item.value);
+                    maxX =
+                        Math.min(
+                            maxX,
+                            item.value
+                        );
                 }
             }
 
             for (const item of yValues) {
-                if (item.operator === ">=" || item.operator === ">") {
-                    minY = Math.max(minY, item.value);
+                if (
+                    item.operator === ">=" ||
+                    item.operator === ">"
+                ) {
+                    minY =
+                        Math.max(
+                            minY,
+                            item.value
+                        );
                 } else {
-                    maxY = Math.min(maxY, item.value);
+                    maxY =
+                        Math.min(
+                            maxY,
+                            item.value
+                        );
                 }
             }
 
@@ -674,14 +738,19 @@ function parseMouseRectangles(source) {
                 !Number.isFinite(minX) ||
                 !Number.isFinite(maxX) ||
                 !Number.isFinite(minY) ||
-                !Number.isFinite(maxY) ||
+                !Number.isFinite(maxY)
+            ) {
+                continue;
+            }
+
+            if (
                 maxX <= minX ||
                 maxY <= minY
             ) {
                 continue;
             }
 
-            found.push({
+            result.push({
                 x: minX,
                 y: minY,
                 width: maxX - minX,
@@ -695,59 +764,40 @@ function parseMouseRectangles(source) {
         }
     }
 
-    return found;
-}
-
-function extractMouseRectangles(source) {
-    const parsedSource = isFullHTML(source)
-        ? extractProcessingScripts(source)
-        : source;
-
-    return parseMouseRectangles(parsedSource);
-}
-
-function extractProcessingScripts(html) {
-    const scripts = [];
-    const pattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-    let match;
-
-    while ((match = pattern.exec(html)) !== null) {
-        const text = match[1];
-
-        if (
-            /\bmousePressed\b|\bmouseClicked\b|\bmouseReleased\b|\bmouseDragged\b/.test(text)
-        ) {
-            scripts.push(text);
-        }
-    }
-
-    return scripts.join("\n");
-}
-
-function sameRectangle(a, b) {
-    return (
-        Math.abs(a.x - b.x) < 0.01 &&
-        Math.abs(a.y - b.y) < 0.01 &&
-        Math.abs(a.width - b.width) < 0.01 &&
-        Math.abs(a.height - b.height) < 0.01
-    );
+    return result;
 }
 
 function getCanvasInformation() {
     try {
-        const iframeRect = program.getBoundingClientRect();
-        const canvas = program.contentDocument.querySelector("canvas");
+        const iframeRect =
+            program.getBoundingClientRect();
+
+        const canvas =
+            program.contentDocument.querySelector(
+                "canvas"
+            );
 
         if (!canvas) {
             return null;
         }
 
-        const canvasRect = canvas.getBoundingClientRect();
-        const stageRect = stage.getBoundingClientRect();
+        const canvasRect =
+            canvas.getBoundingClientRect();
+
+        const stageRect =
+            stage.getBoundingClientRect();
 
         return {
-            x: iframeRect.left + canvasRect.left - stageRect.left,
-            y: iframeRect.top + canvasRect.top - stageRect.top,
+            x:
+                iframeRect.left +
+                canvasRect.left -
+                stageRect.left,
+
+            y:
+                iframeRect.top +
+                canvasRect.top -
+                stageRect.top,
+
             width: canvasRect.width,
             height: canvasRect.height
         };
@@ -756,115 +806,114 @@ function getCanvasInformation() {
     }
 }
 
-function processingToScreen(rectangle) {
-    const canvas = getCanvasInformation();
+function processingToScreen(r) {
+    const canvas =
+        getCanvasInformation();
 
-    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+    if (
+        !canvas ||
+        canvas.width <= 0 ||
+        canvas.height <= 0
+    ) {
         return {
-            x: rectangle.x,
-            y: rectangle.y,
-            width: rectangle.width,
-            height: rectangle.height
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height
         };
     }
 
     return {
-        x: canvas.x + rectangle.x * canvas.width / canvasWidth,
-        y: canvas.y + rectangle.y * canvas.height / canvasHeight,
-        width: rectangle.width * canvas.width / canvasWidth,
-        height: rectangle.height * canvas.height / canvasHeight
+        x:
+            canvas.x +
+            r.x *
+            canvas.width /
+            canvasWidth,
+
+        y:
+            canvas.y +
+            r.y *
+            canvas.height /
+            canvasHeight,
+
+        width:
+            r.width *
+            canvas.width /
+            canvasWidth,
+
+        height:
+            r.height *
+            canvas.height /
+            canvasHeight
     };
 }
 
-function screenToProcessing(rectangle) {
-    const canvas = getCanvasInformation();
+function screenToProcessing(r) {
+    const canvas =
+        getCanvasInformation();
 
-    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+    if (
+        !canvas ||
+        canvas.width <= 0 ||
+        canvas.height <= 0
+    ) {
         return {
-            x: rectangle.x,
-            y: rectangle.y,
-            width: rectangle.width,
-            height: rectangle.height
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height
         };
     }
 
     return {
-        x: (rectangle.x - canvas.x) * canvasWidth / canvas.width,
-        y: (rectangle.y - canvas.y) * canvasHeight / canvas.height,
-        width: rectangle.width * canvasWidth / canvas.width,
-        height: rectangle.height * canvasHeight / canvas.height
+        x:
+            (r.x - canvas.x) *
+            canvasWidth /
+            canvas.width,
+
+        y:
+            (r.y - canvas.y) *
+            canvasHeight /
+            canvas.height,
+
+        width:
+            r.width *
+            canvasWidth /
+            canvas.width,
+
+        height:
+            r.height *
+            canvasHeight /
+            canvas.height
     };
-}
-
-function drawRectangles() {
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-    for (let i = 0; i < rectangles.length; i++) {
-        const r = processingToScreen(rectangles[i]);
-
-        const selected = selectedRectangle === rectangles[i];
-
-        ctx.fillStyle = selected
-            ? "rgba(255,170,0,0.22)"
-            : rectangles[i].original
-                ? "rgba(0,140,255,0.22)"
-                : "rgba(70,220,120,0.22)";
-
-        ctx.fillRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        ctx.strokeStyle = selected
-            ? "#ffb000"
-            : rectangles[i].original
-                ? "#00aaff"
-                : "#48e080";
-
-        ctx.lineWidth = selected ? 3 : 2;
-
-        ctx.strokeRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        if (selected && mode === "edit") {
-            drawResizeHandles(r);
-        }
-    }
-
-    if (currentTempRectangle) {
-        ctx.fillStyle = "rgba(0,170,255,0.2)";
-        ctx.fillRect(
-            currentTempRectangle.x,
-            currentTempRectangle.y,
-            currentTempRectangle.width,
-            currentTempRectangle.height
-        );
-
-        ctx.strokeStyle = "#00aaff";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-            currentTempRectangle.x,
-            currentTempRectangle.y,
-            currentTempRectangle.width,
-            currentTempRectangle.height
-        );
-    }
 }
 
 function drawResizeHandles(r) {
-    const s = RESIZE_HANDLE;
+    const s = 8;
 
     ctx.fillStyle = "#ffb000";
 
-    ctx.fillRect(r.x - s / 2, r.y - s / 2, s, s);
-    ctx.fillRect(r.x + r.width - s / 2, r.y - s / 2, s, s);
-    ctx.fillRect(r.x - s / 2, r.y + r.height - s / 2, s, s);
+    ctx.fillRect(
+        r.x - s / 2,
+        r.y - s / 2,
+        s,
+        s
+    );
+
+    ctx.fillRect(
+        r.x + r.width - s / 2,
+        r.y - s / 2,
+        s,
+        s
+    );
+
+    ctx.fillRect(
+        r.x - s / 2,
+        r.y + r.height - s / 2,
+        s,
+        s
+    );
+
     ctx.fillRect(
         r.x + r.width - s / 2,
         r.y + r.height - s / 2,
@@ -873,83 +922,206 @@ function drawResizeHandles(r) {
     );
 }
 
-function resizeOverlay() {
-    overlay.width = stage.clientWidth;
-    overlay.height = stage.clientHeight;
-    queueDraw();
+function drawRectangles() {
+    ctx.clearRect(
+        0,
+        0,
+        overlay.width,
+        overlay.height
+    );
+
+    for (const rectangle of rectangles) {
+        const r =
+            processingToScreen(
+                rectangle
+            );
+
+        const selected =
+            selectedRectangle === rectangle;
+
+        if (selected) {
+            ctx.fillStyle =
+                "rgba(255,170,0,0.22)";
+            ctx.strokeStyle = "#ffb000";
+        } else if (rectangle.original) {
+            ctx.fillStyle =
+                "rgba(0,140,255,0.22)";
+            ctx.strokeStyle = "#00aaff";
+        } else {
+            ctx.fillStyle =
+                "rgba(70,220,120,0.22)";
+            ctx.strokeStyle = "#48e080";
+        }
+
+        ctx.fillRect(
+            r.x,
+            r.y,
+            r.width,
+            r.height
+        );
+
+        ctx.lineWidth =
+            selected ? 3 : 2;
+
+        ctx.strokeRect(
+            r.x,
+            r.y,
+            r.width,
+            r.height
+        );
+
+        if (
+            selected &&
+            mode === "edit"
+        ) {
+            drawResizeHandles(r);
+        }
+    }
+
+    if (tempRectangle) {
+        ctx.fillStyle =
+            "rgba(0,140,255,0.2)";
+
+        ctx.strokeStyle = "#00aaff";
+        ctx.lineWidth = 2;
+
+        ctx.fillRect(
+            tempRectangle.x,
+            tempRectangle.y,
+            tempRectangle.width,
+            tempRectangle.height
+        );
+
+        ctx.strokeRect(
+            tempRectangle.x,
+            tempRectangle.y,
+            tempRectangle.width,
+            tempRectangle.height
+        );
+    }
 }
 
 function centerProgram() {
-    const left = Math.max(
-        0,
-        (stage.clientWidth - canvasWidth) / 2
-    );
+    const x =
+        Math.max(
+            0,
+            (stage.clientWidth -
+                canvasWidth) / 2
+        );
 
-    const top = Math.max(
-        0,
-        (stage.clientHeight - canvasHeight) / 2
-    );
+    const y =
+        Math.max(
+            0,
+            (stage.clientHeight -
+                canvasHeight) / 2
+        );
 
-    program.style.left = left + "px";
-    program.style.top = top + "px";
-    program.style.width = canvasWidth + "px";
-    program.style.height = canvasHeight + "px";
+    program.style.left =
+        Math.round(x) + "px";
 
-    queueDraw();
+    program.style.top =
+        Math.round(y) + "px";
+
+    program.style.width =
+        canvasWidth + "px";
+
+    program.style.height =
+        canvasHeight + "px";
+
+    overlay.width =
+        stage.clientWidth;
+
+    overlay.height =
+        stage.clientHeight;
+
+    requestDraw();
 }
 
 function runProgram() {
-    const size = getCanvasSize();
+    const size =
+        getCanvasSize();
 
-    canvasWidth = size.width;
-    canvasHeight = size.height;
+    canvasWidth =
+        size.width;
 
-    const source = editor.value;
+    canvasHeight =
+        size.height;
 
-    rectangles = extractMouseRectangles(source);
+    rectangles =
+        parseMouseRectangles(
+            editor.value
+        );
+
     selectedRectangle = null;
-    currentTempRectangle = null;
+    tempRectangle = null;
 
-    editor.style.display = "none";
-    stage.style.display = "block";
-    outputs.style.display = "none";
+    editor.style.display =
+        "none";
+
+    stage.style.display =
+        "block";
+
+    outputs.style.display =
+        "none";
+
+    program.style.pointerEvents =
+        "auto";
+
+    overlay.style.pointerEvents =
+        "none";
 
     centerProgram();
 
-    program.style.pointerEvents = "auto";
-    overlay.style.pointerEvents = "none";
+    const html =
+        getProgramHTML();
 
-    program.srcdoc = getProgramHTML();
+    program.srcdoc = html;
 
     setStatus(
-        "Loaded " +
         rectangles.length +
         " mouse rectangle" +
-        (rectangles.length === 1 ? "" : "s")
+        (rectangles.length === 1
+            ? ""
+            : "s") +
+        " detected"
     );
 
-    setTimeout(function() {
-        centerProgram();
-        resizeOverlay();
-    }, 150);
+    setTimeout(
+        centerProgram,
+        100
+    );
 
-    setTimeout(function() {
-        centerProgram();
-        resizeOverlay();
-    }, 500);
+    setTimeout(
+        centerProgram,
+        400
+    );
+
+    setTimeout(
+        centerProgram,
+        1000
+    );
 }
 
 function editProgram() {
-    stage.style.display = "none";
-    editor.style.display = "block";
-    outputs.style.display = "none";
-    contextMenu.style.display = "none";
-    setStatus("Code editor");
+    stage.style.display =
+        "none";
+
+    editor.style.display =
+        "block";
+
+    outputs.style.display =
+        "none";
+
+    contextMenu.style.display =
+        "none";
+
+    setStatus(
+        "Code editor"
+    );
 }
 
 function setMode(newMode) {
     mode = newMode;
-    contextMenu.style.display = "none";
 
     normalButton.classList.toggle(
         "active",
@@ -966,39 +1138,67 @@ function setMode(newMode) {
         mode === "edit"
     );
 
+    contextMenu.style.display =
+        "none";
+
     if (mode === "normal") {
-        program.style.pointerEvents = "auto";
-        overlay.style.pointerEvents = "none";
-        info.style.display = "none";
+        program.style.pointerEvents =
+            "auto";
+
+        overlay.style.pointerEvents =
+            "none";
+
+        info.style.display =
+            "none";
+
         selectedRectangle = null;
-        queueDraw();
+
+        requestDraw();
+
         return;
     }
 
-    program.style.pointerEvents = "none";
-    overlay.style.pointerEvents = "auto";
-    info.style.display = "block";
+    program.style.pointerEvents =
+        "none";
+
+    overlay.style.pointerEvents =
+        "auto";
+
+    info.style.display =
+        "block";
 
     if (mode === "rect") {
-        info.textContent = "Drag to create a rectangle";
+        info.textContent =
+            "Drag to create a rectangle";
     } else {
         info.textContent =
-            "Drag rectangles • drag corners to resize • right-click for options";
+            "Drag or resize rectangles • Right-click for options";
     }
 
-    queueDraw();
+    requestDraw();
 }
 
-function getPointerPosition(event) {
-    const rect = overlay.getBoundingClientRect();
+function getPointer(event) {
+    const rect =
+        overlay.getBoundingClientRect();
 
     return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
+        x:
+            event.clientX -
+            rect.left,
+
+        y:
+            event.clientY -
+            rect.top
     };
 }
 
-function normalizeRectangle(x1, y1, x2, y2) {
+function normalizeRectangle(
+    x1,
+    y1,
+    x2,
+    y2
+) {
     return {
         x: Math.min(x1, x2),
         y: Math.min(y1, y2),
@@ -1008,8 +1208,15 @@ function normalizeRectangle(x1, y1, x2, y2) {
 }
 
 function getRectangleAt(x, y) {
-    for (let i = rectangles.length - 1; i >= 0; i--) {
-        const r = processingToScreen(rectangles[i]);
+    for (
+        let i = rectangles.length - 1;
+        i >= 0;
+        i--
+    ) {
+        const r =
+            processingToScreen(
+                rectangles[i]
+            );
 
         if (
             x >= r.x &&
@@ -1024,169 +1231,89 @@ function getRectangleAt(x, y) {
     return null;
 }
 
-function isNearResizeCorner(r, x, y) {
-    const corners = [
-        { x: r.x, y: r.y, type: "nw" },
-        { x: r.x + r.width, y: r.y, type: "ne" },
-        { x: r.x, y: r.y + r.height, type: "sw" },
-        {
-            x: r.x + r.width,
-            y: r.y + r.height,
-            type: "se"
-        }
-    ];
+function getCorner(r, x, y) {
+    const size = 9;
 
-    for (const corner of corners) {
-        if (
-            Math.abs(x - corner.x) <= RESIZE_HANDLE &&
-            Math.abs(y - corner.y) <= RESIZE_HANDLE
-        ) {
-            return corner.type;
-        }
+    if (
+        Math.abs(x - r.x) <= size &&
+        Math.abs(y - r.y) <= size
+    ) {
+        return "nw";
+    }
+
+    if (
+        Math.abs(
+            x - (r.x + r.width)
+        ) <= size &&
+        Math.abs(y - r.y) <= size
+    ) {
+        return "ne";
+    }
+
+    if (
+        Math.abs(x - r.x) <= size &&
+        Math.abs(
+            y - (r.y + r.height)
+        ) <= size
+    ) {
+        return "sw";
+    }
+
+    if (
+        Math.abs(
+            x - (r.x + r.width)
+        ) <= size &&
+        Math.abs(
+            y - (r.y + r.height)
+        ) <= size
+    ) {
+        return "se";
     }
 
     return null;
 }
 
-function showContextMenu(event, rectangle) {
-    selectedRectangle = rectangle;
-
-    contextMenu.style.left = event.clientX + "px";
-    contextMenu.style.top = event.clientY + "px";
-    contextMenu.style.display = "block";
-
-    queueDraw();
-}
-
-function hideContextMenu() {
-    contextMenu.style.display = "none";
-}
-
-function duplicateSelected() {
-    if (!selectedRectangle) {
-        return;
-    }
-
-    const copy = {
-        x: selectedRectangle.x + 10,
-        y: selectedRectangle.y + 10,
-        width: selectedRectangle.width,
-        height: selectedRectangle.height,
-        originalX: selectedRectangle.x + 10,
-        originalY: selectedRectangle.y + 10,
-        originalWidth: selectedRectangle.width,
-        originalHeight: selectedRectangle.height,
-        original: false
-    };
-
-    rectangles.push(copy);
-    selectedRectangle = copy;
-
-    hideContextMenu();
-    queueDraw();
-}
-
-function copySelected() {
-    if (!selectedRectangle) {
-        return;
-    }
-
-    clipboardRectangle = {
-        x: selectedRectangle.x,
-        y: selectedRectangle.y,
-        width: selectedRectangle.width,
-        height: selectedRectangle.height,
-        originalX: selectedRectangle.originalX,
-        originalY: selectedRectangle.originalY,
-        originalWidth: selectedRectangle.originalWidth,
-        originalHeight: selectedRectangle.originalHeight,
-        original: selectedRectangle.original
-    };
-
-    hideContextMenu();
-}
-
-function cutSelected() {
-    if (!selectedRectangle) {
-        return;
-    }
-
-    clipboardRectangle = {
-        x: selectedRectangle.x,
-        y: selectedRectangle.y,
-        width: selectedRectangle.width,
-        height: selectedRectangle.height,
-        originalX: selectedRectangle.originalX,
-        originalY: selectedRectangle.originalY,
-        originalWidth: selectedRectangle.originalWidth,
-        originalHeight: selectedRectangle.originalHeight,
-        original: selectedRectangle.original
-    };
-
-    rectangles = rectangles.filter(
-        r => r !== selectedRectangle
+function sameRectangle(a, b) {
+    return (
+        Math.abs(a.x - b.x) < 0.01 &&
+        Math.abs(a.y - b.y) < 0.01 &&
+        Math.abs(a.width - b.width) < 0.01 &&
+        Math.abs(a.height - b.height) < 0.01
     );
-
-    selectedRectangle = null;
-
-    hideContextMenu();
-    queueDraw();
 }
 
-function pasteSelected() {
-    if (!clipboardRectangle) {
-        return;
-    }
+function getOutput(rectangle) {
+    const x1 =
+        Math.round(
+            rectangle.x
+        );
 
-    const pasted = {
-        x: clipboardRectangle.x + 10,
-        y: clipboardRectangle.y + 10,
-        width: clipboardRectangle.width,
-        height: clipboardRectangle.height,
-        originalX: clipboardRectangle.x + 10,
-        originalY: clipboardRectangle.y + 10,
-        originalWidth: clipboardRectangle.width,
-        originalHeight: clipboardRectangle.height,
-        original: false
-    };
+    const y1 =
+        Math.round(
+            rectangle.y
+        );
 
-    rectangles.push(pasted);
-    selectedRectangle = pasted;
+    const x2 =
+        Math.round(
+            rectangle.x +
+            rectangle.width
+        );
 
-    hideContextMenu();
-    queueDraw();
-}
-
-function deleteSelected() {
-    if (!selectedRectangle) {
-        return;
-    }
-
-    rectangles = rectangles.filter(
-        r => r !== selectedRectangle
-    );
-
-    selectedRectangle = null;
-
-    hideContextMenu();
-    queueDraw();
-}
-
-function getRectangleOutput(rectangle) {
-    const x1 = Math.round(rectangle.x);
-    const y1 = Math.round(rectangle.y);
-    const x2 = Math.round(
-        rectangle.x + rectangle.width
-    );
-    const y2 = Math.round(
-        rectangle.y + rectangle.height
-    );
+    const y2 =
+        Math.round(
+            rectangle.y +
+            rectangle.height
+        );
 
     return (
-        "if (mouseX >= " + x1 +
-        " && mouseX <= " + x2 +
-        " && mouseY >= " + y1 +
-        " && mouseY <= " + y2 +
+        "if (mouseX >= " +
+        x1 +
+        " && mouseX <= " +
+        x2 +
+        " && mouseY >= " +
+        y1 +
+        " && mouseY <= " +
+        y2 +
         ") {\n\n}"
     );
 }
@@ -1194,106 +1321,278 @@ function getRectangleOutput(rectangle) {
 function getOutputGroups() {
     const original = [];
     const updated = [];
-    const newlyCreated = [];
+    const newRects = [];
 
-    for (const rectangle of rectangles) {
-        const output = getRectangleOutput(rectangle);
+    for (const r of rectangles) {
+        const text =
+            getOutput(r);
 
-        if (!rectangle.original) {
-            newlyCreated.push(output);
-        } else if (
+        if (!r.original) {
+            newRects.push(text);
+            continue;
+        }
+
+        const originalRectangle = {
+            x: r.originalX,
+            y: r.originalY,
+            width: r.originalWidth,
+            height: r.originalHeight
+        };
+
+        if (
             sameRectangle(
-                rectangle,
-                {
-                    x: rectangle.originalX,
-                    y: rectangle.originalY,
-                    width: rectangle.originalWidth,
-                    height: rectangle.originalHeight
-                }
+                r,
+                originalRectangle
             )
         ) {
-            original.push(output);
+            original.push(text);
         } else {
-            updated.push(output);
+            updated.push(text);
         }
     }
 
     return {
-        original: original.join("\n\n"),
-        updated: updated.join("\n\n"),
-        newlyCreated: newlyCreated.join("\n\n")
+        original:
+            original.join("\n\n"),
+
+        updated:
+            updated.join("\n\n"),
+
+        newRects:
+            newRects.join("\n\n")
     };
 }
 
-function updateOutputBox(box, textarea, value) {
-    if (value.trim() === "") {
-        box.style.display = "none";
+function updateBox(
+    box,
+    textarea,
+    text
+) {
+    if (!text) {
+        box.style.display =
+            "none";
+
         textarea.value = "";
         return;
     }
 
-    box.style.display = "block";
-    textarea.value = value;
+    box.style.display =
+        "block";
+
+    textarea.value =
+        text;
 }
 
 async function printRectangles() {
-    const groups = getOutputGroups();
+    const groups =
+        getOutputGroups();
 
-    updateOutputBox(
+    updateBox(
         originalBox,
         originalOutput,
         groups.original
     );
 
-    updateOutputBox(
+    updateBox(
         updatedBox,
         updatedOutput,
         groups.updated
     );
 
-    updateOutputBox(
+    updateBox(
         newBox,
         newOutput,
-        groups.newlyCreated
+        groups.newRects
     );
 
-    const allOutput = [
+    const combined = [
         groups.original,
         groups.updated,
-        groups.newlyCreated
+        groups.newRects
     ]
         .filter(Boolean)
         .join("\n\n");
 
     outputs.style.display =
-        allOutput.trim() === ""
-            ? "none"
-            : "flex";
+        combined
+            ? "flex"
+            : "none";
 
-    if (allOutput.trim() !== "") {
+    if (combined) {
         try {
             await navigator.clipboard.writeText(
-                allOutput
+                combined
             );
 
-            printButton.textContent = "Copied!";
+            printButton.textContent =
+                "Copied!";
 
-            setTimeout(function() {
-                printButton.textContent =
-                    "Print / Copy";
-            }, 1000);
+            setTimeout(
+                function() {
+                    printButton.textContent =
+                        "Print / Copy";
+                },
+                1000
+            );
         } catch {
         }
     }
 }
 
+function duplicateRectangle() {
+    if (!selectedRectangle) {
+        return;
+    }
+
+    const copy = {
+        x:
+            selectedRectangle.x + 10,
+
+        y:
+            selectedRectangle.y + 10,
+
+        width:
+            selectedRectangle.width,
+
+        height:
+            selectedRectangle.height,
+
+        originalX:
+            selectedRectangle.x + 10,
+
+        originalY:
+            selectedRectangle.y + 10,
+
+        originalWidth:
+            selectedRectangle.width,
+
+        originalHeight:
+            selectedRectangle.height,
+
+        original: false
+    };
+
+    rectangles.push(copy);
+    selectedRectangle = copy;
+
+    contextMenu.style.display =
+        "none";
+
+    requestDraw();
+}
+
+function copyRectangle() {
+    if (!selectedRectangle) {
+        return;
+    }
+
+    clipboardRectangle = {
+        x: selectedRectangle.x,
+        y: selectedRectangle.y,
+        width: selectedRectangle.width,
+        height: selectedRectangle.height,
+        originalX: selectedRectangle.originalX,
+        originalY: selectedRectangle.originalY,
+        originalWidth: selectedRectangle.originalWidth,
+        originalHeight: selectedRectangle.originalHeight,
+        original: selectedRectangle.original
+    };
+
+    contextMenu.style.display =
+        "none";
+}
+
+function cutRectangle() {
+    if (!selectedRectangle) {
+        return;
+    }
+
+    copyRectangle();
+
+    rectangles =
+        rectangles.filter(
+            r => r !== selectedRectangle
+        );
+
+    selectedRectangle =
+        null;
+
+    requestDraw();
+}
+
+function pasteRectangle() {
+    if (!clipboardRectangle) {
+        return;
+    }
+
+    const r = {
+        x:
+            clipboardRectangle.x + 10,
+
+        y:
+            clipboardRectangle.y + 10,
+
+        width:
+            clipboardRectangle.width,
+
+        height:
+            clipboardRectangle.height,
+
+        originalX:
+            clipboardRectangle.x + 10,
+
+        originalY:
+            clipboardRectangle.y + 10,
+
+        originalWidth:
+            clipboardRectangle.width,
+
+        originalHeight:
+            clipboardRectangle.height,
+
+        original: false
+    };
+
+    rectangles.push(r);
+    selectedRectangle = r;
+
+    contextMenu.style.display =
+        "none";
+
+    requestDraw();
+}
+
+function deleteRectangle() {
+    if (!selectedRectangle) {
+        return;
+    }
+
+    rectangles =
+        rectangles.filter(
+            r => r !== selectedRectangle
+        );
+
+    selectedRectangle =
+        null;
+
+    contextMenu.style.display =
+        "none";
+
+    requestDraw();
+}
+
 function clearRectangles() {
     rectangles = [];
     selectedRectangle = null;
-    currentTempRectangle = null;
-    outputs.style.display = "none";
-    hideContextMenu();
-    queueDraw();
+    tempRectangle = null;
+
+    outputs.style.display =
+        "none";
+
+    contextMenu.style.display =
+        "none";
+
+    requestDraw();
 }
 
 overlay.addEventListener(
@@ -1303,71 +1602,80 @@ overlay.addEventListener(
             return;
         }
 
-        hideContextMenu();
+        contextMenu.style.display =
+            "none";
 
-        const point = getPointerPosition(event);
+        const p =
+            getPointer(event);
 
-        if (mode === "edit") {
-            const rectangle =
-                getRectangleAt(
-                    point.x,
-                    point.y
-                );
+        if (mode === "rect") {
+            drawing = true;
 
-            if (!rectangle) {
-                selectedRectangle = null;
-                queueDraw();
-                return;
-            }
+            startX = p.x;
+            startY = p.y;
 
-            selectedRectangle = rectangle;
+            tempRectangle = {
+                x: p.x,
+                y: p.y,
+                width: 0,
+                height: 0
+            };
 
-            const screenRectangle =
-                processingToScreen(rectangle);
+            requestDraw();
 
-            const corner =
-                isNearResizeCorner(
-                    screenRectangle,
-                    point.x,
-                    point.y
-                );
-
-            if (corner) {
-                resizing = true;
-                resizeStartX = point.x;
-                resizeStartY = point.y;
-                resizeOriginal = {
-                    x: rectangle.x,
-                    y: rectangle.y,
-                    width: rectangle.width,
-                    height: rectangle.height
-                };
-            } else {
-                dragging = true;
-
-                dragOffsetX =
-                    point.x - screenRectangle.x;
-
-                dragOffsetY =
-                    point.y - screenRectangle.y;
-            }
-
-            queueDraw();
             return;
         }
 
-        drawing = true;
-        startX = point.x;
-        startY = point.y;
+        const rectangle =
+            getRectangleAt(
+                p.x,
+                p.y
+            );
 
-        currentTempRectangle = {
-            x: point.x,
-            y: point.y,
-            width: 0,
-            height: 0
-        };
+        if (!rectangle) {
+            selectedRectangle = null;
+            requestDraw();
+            return;
+        }
 
-        queueDraw();
+        selectedRectangle =
+            rectangle;
+
+        const screen =
+            processingToScreen(
+                rectangle
+            );
+
+        const corner =
+            getCorner(
+                screen,
+                p.x,
+                p.y
+            );
+
+        if (corner) {
+            resizing = true;
+
+            resizeStartX = p.x;
+            resizeStartY = p.y;
+
+            resizeOriginal = {
+                x: rectangle.x,
+                y: rectangle.y,
+                width: rectangle.width,
+                height: rectangle.height
+            };
+        } else {
+            dragging = true;
+
+            dragOffsetX =
+                p.x - screen.x;
+
+            dragOffsetY =
+                p.y - screen.y;
+        }
+
+        requestDraw();
     }
 );
 
@@ -1378,33 +1686,38 @@ overlay.addEventListener(
             return;
         }
 
-        const point = getPointerPosition(event);
+        const p =
+            getPointer(event);
 
-        if (mode === "rect" && drawing) {
-            currentTempRectangle =
+        if (
+            mode === "rect" &&
+            drawing
+        ) {
+            tempRectangle =
                 normalizeRectangle(
                     startX,
                     startY,
-                    point.x,
-                    point.y
+                    p.x,
+                    p.y
                 );
 
-            const processingRectangle =
+            const r =
                 screenToProcessing(
-                    currentTempRectangle
+                    tempRectangle
                 );
 
             info.textContent =
                 "X: " +
-                Math.round(processingRectangle.x) +
+                Math.round(r.x) +
                 "  Y: " +
-                Math.round(processingRectangle.y) +
+                Math.round(r.y) +
                 "  W: " +
-                Math.round(processingRectangle.width) +
+                Math.round(r.width) +
                 "  H: " +
-                Math.round(processingRectangle.height);
+                Math.round(r.height);
 
-            queueDraw();
+            requestDraw();
+
             return;
         }
 
@@ -1413,20 +1726,20 @@ overlay.addEventListener(
             selectedRectangle &&
             dragging
         ) {
-            const screenRectangle =
+            const screen =
                 processingToScreen(
                     selectedRectangle
                 );
 
-            screenRectangle.x =
-                point.x - dragOffsetX;
+            screen.x =
+                p.x - dragOffsetX;
 
-            screenRectangle.y =
-                point.y - dragOffsetY;
+            screen.y =
+                p.y - dragOffsetY;
 
             const converted =
                 screenToProcessing(
-                    screenRectangle
+                    screen
                 );
 
             selectedRectangle.x =
@@ -1438,7 +1751,8 @@ overlay.addEventListener(
             selectedRectangle.original =
                 false;
 
-            queueDraw();
+            requestDraw();
+
             return;
         }
 
@@ -1447,24 +1761,26 @@ overlay.addEventListener(
             selectedRectangle &&
             resizing
         ) {
-            const dx =
-                point.x - resizeStartX;
-
-            const dy =
-                point.y - resizeStartY;
-
             const canvas =
                 getCanvasInformation();
 
             const scaleX =
                 canvas
-                    ? canvasWidth / canvas.width
+                    ? canvasWidth /
+                      canvas.width
                     : 1;
 
             const scaleY =
                 canvas
-                    ? canvasHeight / canvas.height
+                    ? canvasHeight /
+                      canvas.height
                     : 1;
+
+            const dx =
+                p.x - resizeStartX;
+
+            const dy =
+                p.y - resizeStartY;
 
             selectedRectangle.x =
                 resizeOriginal.x;
@@ -1474,14 +1790,14 @@ overlay.addEventListener(
 
             selectedRectangle.width =
                 Math.max(
-                    MIN_RECT_SIZE,
+                    2,
                     resizeOriginal.width +
                     dx * scaleX
                 );
 
             selectedRectangle.height =
                 Math.max(
-                    MIN_RECT_SIZE,
+                    2,
                     resizeOriginal.height +
                     dy * scaleY
                 );
@@ -1489,7 +1805,7 @@ overlay.addEventListener(
             selectedRectangle.original =
                 false;
 
-            queueDraw();
+            requestDraw();
         }
     }
 );
@@ -1501,27 +1817,32 @@ overlay.addEventListener(
             return;
         }
 
-        const point = getPointerPosition(event);
+        const p =
+            getPointer(event);
 
-        if (mode === "rect" && drawing) {
-            const rectangle =
+        if (
+            mode === "rect" &&
+            drawing
+        ) {
+            drawing = false;
+
+            const r =
                 normalizeRectangle(
                     startX,
                     startY,
-                    point.x,
-                    point.y
+                    p.x,
+                    p.y
                 );
 
-            drawing = false;
-            currentTempRectangle = null;
+            tempRectangle = null;
 
             if (
-                rectangle.width >= MIN_RECT_SIZE &&
-                rectangle.height >= MIN_RECT_SIZE
+                r.width >= 2 &&
+                r.height >= 2
             ) {
                 const converted =
                     screenToProcessing(
-                        rectangle
+                        r
                     );
 
                 rectangles.push({
@@ -1540,15 +1861,29 @@ overlay.addEventListener(
             info.textContent =
                 "Drag to create a rectangle";
 
-            queueDraw();
+            requestDraw();
+
             return;
         }
 
-        if (mode === "edit") {
-            dragging = false;
-            resizing = false;
-            resizeOriginal = null;
-            queueDraw();
+        dragging = false;
+        resizing = false;
+        resizeOriginal = null;
+
+        requestDraw();
+    }
+);
+
+overlay.addEventListener(
+    "mouseleave",
+    function() {
+        if (
+            mode === "rect" &&
+            drawing
+        ) {
+            drawing = false;
+            tempRectangle = null;
+            requestDraw();
         }
     }
 );
@@ -1562,57 +1897,74 @@ overlay.addEventListener(
 
         event.preventDefault();
 
-        const point = getPointerPosition(event);
+        const p =
+            getPointer(event);
 
         const rectangle =
             getRectangleAt(
-                point.x,
-                point.y
+                p.x,
+                p.y
             );
 
-        if (rectangle) {
-            showContextMenu(
-                event,
-                rectangle
-            );
-        } else {
-            hideContextMenu();
+        if (!rectangle) {
+            contextMenu.style.display =
+                "none";
+            return;
         }
+
+        selectedRectangle =
+            rectangle;
+
+        contextMenu.style.left =
+            event.clientX + "px";
+
+        contextMenu.style.top =
+            event.clientY + "px";
+
+        contextMenu.style.display =
+            "block";
+
+        requestDraw();
     }
 );
 
 document.addEventListener(
     "mousedown",
     function(event) {
-        if (!contextMenu.contains(event.target)) {
-            hideContextMenu();
+        if (
+            !contextMenu.contains(
+                event.target
+            )
+        ) {
+            contextMenu.style.display =
+                "none";
         }
     }
 );
 
 duplicateButton.addEventListener(
     "click",
-    duplicateSelected
-);
-
-cutButton.addEventListener(
-    "click",
-    cutSelected
+    duplicateRectangle
 );
 
 copyButton.addEventListener(
     "click",
-    copySelected
+    copyRectangle
+);
+
+cutButton.addEventListener(
+    "click",
+    cutRectangle
 );
 
 pasteButton.addEventListener(
     "click",
-    pasteSelected
+    pasteRectangle
 );
 
 deleteButton.addEventListener(
     "click",
-    deleteSelected
+    deleteRectangle
 );
 
 runButton.addEventListener(
@@ -1659,11 +2011,16 @@ clearButton.addEventListener(
 widthInput.addEventListener(
     "change",
     function() {
-        const size = getCanvasSize();
+        const size =
+            getCanvasSize();
 
-        canvasWidth = size.width;
+        canvasWidth =
+            size.width;
 
-        if (stage.style.display !== "none") {
+        if (
+            stage.style.display !==
+            "none"
+        ) {
             centerProgram();
         }
     }
@@ -1672,11 +2029,16 @@ widthInput.addEventListener(
 heightInput.addEventListener(
     "change",
     function() {
-        const size = getCanvasSize();
+        const size =
+            getCanvasSize();
 
-        canvasHeight = size.height;
+        canvasHeight =
+            size.height;
 
-        if (stage.style.display !== "none") {
+        if (
+            stage.style.display !==
+            "none"
+        ) {
             centerProgram();
         }
     }
@@ -1685,9 +2047,11 @@ heightInput.addEventListener(
 window.addEventListener(
     "resize",
     function() {
-        if (stage.style.display !== "none") {
+        if (
+            stage.style.display !==
+            "none"
+        ) {
             centerProgram();
-            resizeOverlay();
         }
     }
 );
@@ -1695,24 +2059,28 @@ window.addEventListener(
 editor.addEventListener(
     "keydown",
     function(event) {
-        if (event.key === "Tab") {
-            event.preventDefault();
-
-            const start = editor.selectionStart;
-            const end = editor.selectionEnd;
-
-            editor.setRangeText(
-                "    ",
-                start,
-                end,
-                "end"
-            );
+        if (event.key !== "Tab") {
+            return;
         }
+
+        event.preventDefault();
+
+        const start =
+            editor.selectionStart;
+
+        const end =
+            editor.selectionEnd;
+
+        editor.setRangeText(
+            "    ",
+            start,
+            end,
+            "end"
+        );
     }
 );
 
 setMode("normal");
-resizeOverlay();
 </script>
 </body>
 </html>
