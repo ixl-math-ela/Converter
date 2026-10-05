@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProcessingJS Mouse Rectangle Converter</title>
-
+<title>ProcessingJS Mouse Rectangle Editor</title>
 <style>
 * {
     box-sizing: border-box;
@@ -16,1164 +15,941 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background:
-        radial-gradient(circle at 20% 20%, rgba(45, 91, 180, 0.2), transparent 35%),
-        radial-gradient(circle at 80% 70%, rgba(102, 45, 180, 0.18), transparent 35%),
-        linear-gradient(135deg, #060b18, #0c1325 45%, #090d19);
+    background: #151515;
     color: white;
     font-family: Arial, sans-serif;
 }
 
-#sidebar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 175px;
+#app {
+    display: flex;
+    width: 100%;
     height: 100%;
-    background: rgba(5, 10, 24, 0.96);
-    border-right: 1px solid rgba(100, 150, 255, 0.25);
-    padding: 12px;
-    z-index: 300;
+}
+
+#sidebar {
+    width: 180px;
+    min-width: 180px;
+    height: 100%;
+    background: #202020;
+    border-right: 1px solid #444;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.3);
+    gap: 7px;
+    z-index: 100;
 }
 
-#sidebarTitle {
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 7px;
-    padding: 5px;
-}
-
-.sidebarGroup {
-    border-top: 1px solid rgba(100, 150, 255, 0.15);
-    padding-top: 9px;
-}
-
-.sidebarLabel {
-    display: block;
-    color: #9dbcf0;
-    font-size: 11px;
-    margin-bottom: 5px;
-}
-
-button {
+#sidebar button {
     width: 100%;
-    background: linear-gradient(135deg, #172544, #111a31);
+    min-height: 38px;
+    background: #333;
     color: white;
-    border: 1px solid rgba(100, 150, 255, 0.35);
-    border-radius: 8px;
-    padding: 9px 10px;
+    border: 1px solid #555;
+    border-radius: 5px;
     cursor: pointer;
-    transition: 0.15s;
-    margin-bottom: 5px;
+    font-size: 13px;
 }
 
-button:hover {
-    background: linear-gradient(135deg, #21355e, #19284a);
-    border-color: rgba(110, 175, 255, 0.7);
+#sidebar button:hover {
+    background: #414141;
 }
 
-button.active {
-    background: linear-gradient(135deg, #1267a5, #5430a8);
-    border-color: #78bfff;
-    box-shadow: 0 0 15px rgba(45, 130, 255, 0.3);
+#sidebar button.active {
+    background: #1267a5;
+    border-color: #63b8ff;
 }
 
-.sizeRow {
-    display: flex;
-    gap: 5px;
+#sizeBox {
+    border-top: 1px solid #444;
+    margin-top: 5px;
+    padding-top: 10px;
 }
 
-.sizeInput {
-    width: 50%;
-    min-width: 0;
-    background: #0a1122;
+#sizeBox label {
+    display: block;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 3px;
+}
+
+#sizeBox input {
+    width: 100%;
+    height: 30px;
+    margin-bottom: 7px;
+    background: #111;
     color: white;
-    border: 1px solid rgba(100, 160, 255, 0.35);
-    border-radius: 6px;
-    padding: 7px;
-    outline: none;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px 7px;
 }
 
 #main {
-    position: absolute;
-    left: 175px;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
 }
 
 #editor {
     position: absolute;
-    left: 0;
-    top: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    background: rgba(4, 8, 17, 0.96);
-    color: #e9efff;
+    padding: 15px;
     border: 0;
     outline: 0;
     resize: none;
-    padding: 18px;
-    font: 14px/1.5 monospace;
+    background: #101010;
+    color: #eee;
+    font: 14px/1.45 monospace;
+    tab-size: 4;
+    white-space: pre;
+    overflow: auto;
 }
 
 #stage {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     display: none;
-    background:
-        radial-gradient(circle at center, rgba(38, 65, 120, 0.15), transparent 50%);
+    overflow: hidden;
+    background: #252525;
 }
 
 #program {
     position: absolute;
-    width: 400px;
-    height: 400px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     border: 0;
     background: white;
-    z-index: 30;
-    pointer-events: auto;
+    display: block;
 }
 
 #overlay {
     position: absolute;
-    width: 400px;
-    height: 400px;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
 }
 
 #info {
     position: absolute;
-    left: 50%;
-    top: calc(50% + 215px);
-    transform: translateX(-50%);
-    background: rgba(5, 10, 24, 0.92);
-    border: 1px solid rgba(100, 160, 255, 0.35);
-    padding: 8px 12px;
-    border-radius: 8px;
-    font: 13px monospace;
+    left: 10px;
+    top: 10px;
+    background: rgba(0, 0, 0, 0.82);
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 7px 9px;
+    font: 12px monospace;
     display: none;
-    z-index: 60;
-    white-space: nowrap;
+    z-index: 20;
+    pointer-events: none;
 }
 
-#editPanel {
+#outputs {
     position: absolute;
-    left: 15px;
-    top: 15px;
-    background: rgba(7, 13, 29, 0.92);
-    border: 1px solid rgba(100, 160, 255, 0.3);
-    border-radius: 10px;
-    padding: 10px;
-    z-index: 60;
-    display: none;
-    font-size: 12px;
-}
-
-#editPanel span {
-    color: #9fc8ff;
-}
-
-#outputPanel {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 360px;
-    max-height: calc(100% - 30px);
+    right: 10px;
+    top: 10px;
+    width: 310px;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
     display: none;
     flex-direction: column;
-    gap: 10px;
-    z-index: 200;
-    overflow-y: auto;
+    gap: 8px;
+    z-index: 40;
+    pointer-events: none;
 }
 
-.outputSection {
-    display: none;
-    width: 100%;
-    background: rgba(5, 10, 20, 0.97);
-    border: 1px solid rgba(100, 160, 255, 0.35);
-    border-radius: 10px;
-    padding: 10px;
+.outputBox {
+    background: rgba(15, 15, 15, 0.95);
+    border: 1px solid #555;
+    border-radius: 6px;
+    overflow: hidden;
+    pointer-events: auto;
 }
 
 .outputTitle {
-    font-size: 13px;
+    padding: 7px 9px;
+    background: #292929;
+    border-bottom: 1px solid #444;
+    font-size: 12px;
     font-weight: bold;
-    color: #a9ccff;
-    margin-bottom: 7px;
 }
 
-.outputCode {
+.outputText {
     width: 100%;
-    height: 120px;
-    background: #090e19;
-    color: #b7ffcc;
-    border: 1px solid rgba(100, 160, 255, 0.25);
-    border-radius: 7px;
-    padding: 10px;
-    font: 12px/1.5 monospace;
+    min-height: 70px;
+    max-height: 250px;
+    display: block;
     resize: vertical;
-    outline: none;
+    border: 0;
+    outline: 0;
+    padding: 9px;
+    background: #101010;
+    color: #b7ffb7;
+    font: 12px/1.4 monospace;
 }
 
 #contextMenu {
     position: fixed;
     display: none;
-    min-width: 150px;
-    background: rgba(10, 17, 35, 0.98);
-    border: 1px solid rgba(100, 160, 255, 0.45);
-    border-radius: 9px;
-    padding: 5px;
-    z-index: 500;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55);
+    width: 145px;
+    background: #252525;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 4px;
+    z-index: 1000;
+    box-shadow: 0 5px 18px rgba(0,0,0,0.5);
 }
 
-.contextItem {
-    padding: 9px 12px;
-    border-radius: 6px;
-    cursor: pointer;
+#contextMenu button {
+    display: block;
+    width: 100%;
+    background: transparent;
     color: white;
-    font-size: 13px;
+    border: 0;
+    text-align: left;
+    padding: 8px;
+    border-radius: 3px;
+    cursor: pointer;
 }
 
-.contextItem:hover {
-    background: linear-gradient(135deg, #1b4f91, #51329a);
+#contextMenu button:hover {
+    background: #1267a5;
 }
 
-@media (max-width: 800px) {
-    #sidebar {
-        width: 145px;
-    }
+#contextMenu .danger:hover {
+    background: #9b3030;
+}
 
-    #main {
-        left: 145px;
-    }
-
-    #outputPanel {
-        width: 300px;
-    }
+#status {
+    margin-top: auto;
+    color: #777;
+    font: 10px monospace;
+    line-height: 1.3;
+    word-break: break-word;
 }
 </style>
 </head>
-
 <body>
 
-<div id="sidebar">
+<div id="app">
+    <aside id="sidebar">
+        <button id="runButton">Run</button>
+        <button id="editButton">Edit Code</button>
+        <button id="normalButton" class="active">Normal Mode</button>
+        <button id="rectButton">Rect Mode</button>
+        <button id="editRectButton">Edit Rects</button>
+        <button id="printButton">Print / Copy</button>
+        <button id="clearButton">Clear Rects</button>
 
-    <div id="sidebarTitle">
-        Mouse Rects
-    </div>
+        <div id="sizeBox">
+            <label for="widthInput">Canvas Width</label>
+            <input id="widthInput" type="number" min="1" step="1" value="400">
 
-    <div class="sidebarGroup">
-
-        <button id="runButton">
-            Run
-        </button>
-
-        <button id="editButton">
-            Edit Code
-        </button>
-
-    </div>
-
-    <div class="sidebarGroup">
-
-        <span class="sidebarLabel">
-            Program Size
-        </span>
-
-        <div class="sizeRow">
-            <input
-                id="widthInput"
-                class="sizeInput"
-                type="number"
-                min="1"
-                value="400">
-
-            <input
-                id="heightInput"
-                class="sizeInput"
-                type="number"
-                min="1"
-                value="400">
+            <label for="heightInput">Canvas Height</label>
+            <input id="heightInput" type="number" min="1" step="1" value="400">
         </div>
 
-    </div>
-
-    <div class="sidebarGroup">
-
-        <span class="sidebarLabel">
-            Mode
-        </span>
-
-        <button id="normalButton" class="active">
-            Normal Mode
-        </button>
-
-        <button id="rectButton">
-            Rect Mode
-        </button>
-
-        <button id="editRectsButton">
-            Edit Rects
-        </button>
-
-    </div>
-
-    <div class="sidebarGroup">
-
-        <button id="printButton">
-            Print / Copy
-        </button>
-
-        <button id="clearButton">
-            Clear
-        </button>
-
-    </div>
-
-</div>
-
-<div id="main">
-
-    <textarea
-        id="editor"
-        spellcheck="false"></textarea>
-
-    <div id="stage">
-
-        <iframe
-            id="program"
-            sandbox="allow-scripts allow-same-origin allow-forms">
-        </iframe>
-
-        <canvas
-            id="overlay"
-            width="400"
-            height="400">
-        </canvas>
-
-        <div id="info"></div>
-
-        <div id="editPanel">
-            <span>Left click:</span>
-            select / move / resize
-            &nbsp;&nbsp;
-            <span>Right click:</span>
-            options
-            &nbsp;&nbsp;
-            <span>Delete:</span>
-            delete selected
-        </div>
-
-    </div>
-
-    <div id="outputPanel">
-
-        <div id="originalSection" class="outputSection">
-            <div class="outputTitle">
-                Originally
-            </div>
-
-            <textarea
-                id="originalOutput"
-                class="outputCode"
-                readonly>
-            </textarea>
-        </div>
-
-        <div id="updatedSection" class="outputSection">
-            <div class="outputTitle">
-                Updated
-            </div>
-
-            <textarea
-                id="updatedOutput"
-                class="outputCode"
-                readonly>
-            </textarea>
-        </div>
-
-        <div id="newSection" class="outputSection">
-            <div class="outputTitle">
-                New
-            </div>
-
-            <textarea
-                id="newOutput"
-                class="outputCode"
-                readonly>
-            </textarea>
-        </div>
-
-    </div>
-
-</div>
-
-<div id="contextMenu">
-
-    <div
-        class="contextItem"
-        data-action="duplicate">
-        Duplicate
-    </div>
-
-    <div
-        class="contextItem"
-        data-action="cut">
-        Cut
-    </div>
-
-    <div
-        class="contextItem"
-        data-action="copy">
-        Copy
-    </div>
-
-    <div
-        class="contextItem"
-        data-action="paste">
-        Paste
-    </div>
-
-    <div
-        class="contextItem"
-        data-action="delete">
-        Delete
-    </div>
-
-</div>
-
-<script>
-const editor =
-    document.getElementById("editor");
-
-const stage =
-    document.getElementById("stage");
-
-const program =
-    document.getElementById("program");
-
-const overlay =
-    document.getElementById("overlay");
-
-const ctx =
-    overlay.getContext("2d");
-
-const info =
-    document.getElementById("info");
-
-const editPanel =
-    document.getElementById("editPanel");
-
-const outputPanel =
-    document.getElementById("outputPanel");
-
-const contextMenu =
-    document.getElementById("contextMenu");
-
-const originalSection =
-    document.getElementById("originalSection");
-
-const updatedSection =
-    document.getElementById("updatedSection");
-
-const newSection =
-    document.getElementById("newSection");
-
-const originalOutput =
-    document.getElementById("originalOutput");
-
-const updatedOutput =
-    document.getElementById("updatedOutput");
-
-const newOutput =
-    document.getElementById("newOutput");
-
-const runButton =
-    document.getElementById("runButton");
-
-const editButton =
-    document.getElementById("editButton");
-
-const normalButton =
-    document.getElementById("normalButton");
-
-const rectButton =
-    document.getElementById("rectButton");
-
-const editRectsButton =
-    document.getElementById("editRectsButton");
-
-const printButton =
-    document.getElementById("printButton");
-
-const clearButton =
-    document.getElementById("clearButton");
-
-const widthInput =
-    document.getElementById("widthInput");
-
-const heightInput =
-    document.getElementById("heightInput");
-
-let mode = "normal";
-
-let rectangles = [];
-
-let selectedRectangle = -1;
-
-let contextRectangle = -1;
-
-let clipboardRectangle = null;
-
-let drawing = false;
-
-let startX = 0;
-
-let startY = 0;
-
-let editing = false;
-
-let editAction = "";
-
-let resizeHandle = "";
-
-let dragOffsetX = 0;
-
-let dragOffsetY = 0;
-
-editor.value = `background(220);
+        <div id="status"></div>
+    </aside>
+
+    <main id="main">
+        <textarea id="editor" spellcheck="false">size(400, 400);
+background(220);
 
 fill(255, 0, 0);
 rect(20, 120, 340, 45);
 
 fill(0, 0, 255);
-rect(20, 170, 340, 45);`;
+rect(20, 170, 340, 45);
 
-function getProgramWidth() {
-    const value =
-        Number(widthInput.value);
+function mousePressed() {
+    if (mouseX >= 20 && mouseX <= 360 && mouseY >= 120 && mouseY <= 165) {
+        println("First button");
+    }
 
-    return value > 0 ? value : 400;
+    if (mouseX >= 20 && mouseX <= 360 && mouseY >= 170 && mouseY <= 215) {
+        println("Second button");
+    }
+}</textarea>
+
+        <div id="stage">
+            <iframe id="program" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            <canvas id="overlay"></canvas>
+            <div id="info"></div>
+
+            <div id="outputs">
+                <div id="originalBox" class="outputBox">
+                    <div class="outputTitle">Originally</div>
+                    <textarea id="originalOutput" class="outputText" readonly></textarea>
+                </div>
+
+                <div id="updatedBox" class="outputBox">
+                    <div class="outputTitle">Updated</div>
+                    <textarea id="updatedOutput" class="outputText" readonly></textarea>
+                </div>
+
+                <div id="newBox" class="outputBox">
+                    <div class="outputTitle">New</div>
+                    <textarea id="newOutput" class="outputText" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="contextMenu">
+    <button id="duplicateButton">Duplicate</button>
+    <button id="cutButton">Cut</button>
+    <button id="copyButton">Copy</button>
+    <button id="pasteButton">Paste</button>
+    <button id="deleteButton" class="danger">Delete</button>
+</div>
+
+<script>
+const editor = document.getElementById("editor");
+const stage = document.getElementById("stage");
+const program = document.getElementById("program");
+const overlay = document.getElementById("overlay");
+const ctx = overlay.getContext("2d", { alpha: true });
+
+const info = document.getElementById("info");
+const outputs = document.getElementById("outputs");
+const originalBox = document.getElementById("originalBox");
+const updatedBox = document.getElementById("updatedBox");
+const newBox = document.getElementById("newBox");
+const originalOutput = document.getElementById("originalOutput");
+const updatedOutput = document.getElementById("updatedOutput");
+const newOutput = document.getElementById("newOutput");
+
+const runButton = document.getElementById("runButton");
+const editButton = document.getElementById("editButton");
+const normalButton = document.getElementById("normalButton");
+const rectButton = document.getElementById("rectButton");
+const editRectButton = document.getElementById("editRectButton");
+const printButton = document.getElementById("printButton");
+const clearButton = document.getElementById("clearButton");
+
+const widthInput = document.getElementById("widthInput");
+const heightInput = document.getElementById("heightInput");
+const status = document.getElementById("status");
+
+const contextMenu = document.getElementById("contextMenu");
+const duplicateButton = document.getElementById("duplicateButton");
+const cutButton = document.getElementById("cutButton");
+const copyButton = document.getElementById("copyButton");
+const pasteButton = document.getElementById("pasteButton");
+const deleteButton = document.getElementById("deleteButton");
+
+let mode = "normal";
+let rectangles = [];
+let selectedRectangle = null;
+let clipboardRectangle = null;
+
+let drawing = false;
+let dragging = false;
+let resizing = false;
+
+let startX = 0;
+let startY = 0;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+let resizeStartX = 0;
+let resizeStartY = 0;
+let resizeOriginal = null;
+
+let canvasWidth = 400;
+let canvasHeight = 400;
+
+let drawQueued = false;
+let currentTempRectangle = null;
+
+const MIN_RECT_SIZE = 2;
+const RESIZE_HANDLE = 8;
+
+function queueDraw() {
+    if (drawQueued) {
+        return;
+    }
+
+    drawQueued = true;
+
+    requestAnimationFrame(function() {
+        drawQueued = false;
+        drawRectangles();
+    });
 }
 
-function getProgramHeight() {
-    const value =
-        Number(heightInput.value);
+function setStatus(text) {
+    status.textContent = text;
+}
 
-    return value > 0 ? value : 400;
+function escapeHTML(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }
 
 function hasSizeCall(code) {
     return /\bsize\s*\(/.test(code);
 }
 
+function getCanvasSize() {
+    let width = parseInt(widthInput.value, 10);
+    let height = parseInt(heightInput.value, 10);
+
+    if (!Number.isFinite(width) || width < 1) {
+        width = 400;
+    }
+
+    if (!Number.isFinite(height) || height < 1) {
+        height = 400;
+    }
+
+    return {
+        width,
+        height
+    };
+}
+
 function isFullHTML(code) {
+    const head = code.slice(0, 5000);
+
     return (
-        /<!doctype/i.test(code) ||
-        /<html[\s>]/i.test(code)
+        /<!doctype\s+html/i.test(head) ||
+        /<html(?:\s|>)/i.test(head) ||
+        /<body(?:\s|>)/i.test(head)
     );
 }
 
-function createProcessingHTML(source) {
-    const width =
-        getProgramWidth();
+function injectSizeIntoProcessingHTML(html, width, height) {
+    if (hasSizeCall(html)) {
+        return html;
+    }
 
-    const height =
-        getProgramHeight();
+    const canvasPattern = /<canvas\b([^>]*)>/i;
+    const match = html.match(canvasPattern);
 
-    const sizeCode =
-        hasSizeCall(source)
-            ? ""
-            : `size(${width}, ${height});`;
+    if (match) {
+        const attributes = match[1]
+            .replace(/\swidth\s*=\s*["'][^"']*["']/gi, "")
+            .replace(/\sheight\s*=\s*["'][^"']*["']/gi, "");
+
+        const replacement =
+            "<canvas" +
+            attributes +
+            ' width="' + width + '"' +
+            ' height="' + height + '">';
+
+        return html.replace(canvasPattern, replacement);
+    }
+
+    return html;
+}
+
+function createProcessingHTML(source, width, height) {
+    const sizeCode = hasSizeCall(source)
+        ? ""
+        : "size(" + width + ", " + height + ");";
 
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>ProcessingJS Program</title>
-
 <style>
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: ${width}px;
-    height: ${height}px;
-    overflow: hidden;
+html,body {
+    margin:0;
+    padding:0;
+    overflow:hidden;
 }
-
 canvas {
-    display: block;
+    display:block;
 }
 </style>
 </head>
-
 <body>
-
-<canvas
-    id="mycanvas"
-    width="${width}"
-    height="${height}">
-</canvas>
-
-<script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"><\/script>
-
+<canvas id="mycanvas" width="${width}" height="${height}"></canvas>
+<script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"><\\/script>
 <script>
 var programCode = function(processingInstance) {
-
     with (processingInstance) {
-
         ${sizeCode}
-
         ${source}
-
     }
-
 };
 
-var canvas =
-    document.getElementById("mycanvas");
-
-var processingInstance =
-    new Processing(
-        canvas,
-        programCode
-    );
-
-<\/script>
-
+var canvas = document.getElementById("mycanvas");
+new Processing(canvas, programCode);
+<\\/script>
 </body>
 </html>`;
 }
 
-function normalizeRectangle(
-    x1,
-    y1,
-    x2,
-    y2
-) {
-    return {
-        x: Math.min(x1, x2),
-        y: Math.min(y1, y2),
-        width: Math.abs(x2 - x1),
-        height: Math.abs(y2 - y1)
-    };
-}
+function getProgramHTML() {
+    const source = editor.value;
 
-function extractCoordinateRange(
-    condition,
-    variable
-) {
-    const escaped =
-        variable.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
+    if (isFullHTML(source)) {
+        return injectSizeIntoProcessingHTML(
+            source,
+            canvasWidth,
+            canvasHeight
         );
-
-    const greaterPattern =
-        new RegExp(
-            escaped +
-            "\\s*(?:>|>=)\\s*(-?\\d+(?:\\.\\d+)?)"
-        );
-
-    const lessPattern =
-        new RegExp(
-            escaped +
-            "\\s*(?:<|<=)\\s*(-?\\d+(?:\\.\\d+)?)"
-        );
-
-    const greaterReversePattern =
-        new RegExp(
-            "(-?\\d+(?:\\.\\d+)?)\\s*(?:<|<=)\\s*" +
-            escaped
-        );
-
-    const lessReversePattern =
-        new RegExp(
-            "(-?\\d+(?:\\.\\d+)?)\\s*(?:>|>=)\\s*" +
-            escaped
-        );
-
-    let min = null;
-
-    let max = null;
-
-    const greater =
-        condition.match(
-            greaterPattern
-        );
-
-    const less =
-        condition.match(
-            lessPattern
-        );
-
-    const greaterReverse =
-        condition.match(
-            greaterReversePattern
-        );
-
-    const lessReverse =
-        condition.match(
-            lessReversePattern
-        );
-
-    if (greater) {
-        min =
-            Number(greater[1]);
     }
 
-    if (less) {
-        max =
-            Number(less[1]);
-    }
-
-    if (greaterReverse) {
-        max =
-            Number(greaterReverse[1]);
-    }
-
-    if (lessReverse) {
-        min =
-            Number(lessReverse[1]);
-    }
-
-    if (
-        min === null &&
-        max === null
-    ) {
-        return null;
-    }
-
-    return {
-        min:
-            min === null
-                ? 0
-                : min,
-
-        max:
-            max === null
-                ? getProgramWidth()
-                : max
-    };
-}
-
-function extractMouseRectangles(code) {
-    const found = [];
-
-    const ifRegex =
-        /if\s*\(([\s\S]*?)\)\s*\{/g;
-
-    let match;
-
-    while (
-        (match = ifRegex.exec(code)) !== null
-    ) {
-        const condition =
-            match[1];
-
-        if (
-            !/mouseX|mouseY/.test(
-                condition
-            )
-        ) {
-            continue;
-        }
-
-        const xRange =
-            extractCoordinateRange(
-                condition,
-                "mouseX"
-            );
-
-        const yRange =
-            extractCoordinateRange(
-                condition,
-                "mouseY"
-            );
-
-        if (!xRange || !yRange) {
-            continue;
-        }
-
-        const x =
-            xRange.min;
-
-        const y =
-            yRange.min;
-
-        const width =
-            xRange.max - xRange.min;
-
-        const height =
-            yRange.max - yRange.min;
-
-        if (
-            width <= 0 ||
-            height <= 0
-        ) {
-            continue;
-        }
-
-        found.push({
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-
-            original: true,
-
-            originalCode:
-                match[0],
-
-            originalX:
-                x,
-
-            originalY:
-                y,
-
-            originalWidth:
-                width,
-
-            originalHeight:
-                height,
-
-            id:
-                crypto.randomUUID()
-        });
-    }
-
-    return found;
-}
-
-function resizeProgramDisplay() {
-    const width =
-        getProgramWidth();
-
-    const height =
-        getProgramHeight();
-
-    program.style.width =
-        width + "px";
-
-    program.style.height =
-        height + "px";
-
-    overlay.width =
-        width;
-
-    overlay.height =
-        height;
-
-    overlay.style.width =
-        width + "px";
-
-    overlay.style.height =
-        height + "px";
-
-    drawRectangles();
-}
-
-function getCanvasScale() {
-    const width =
-        getProgramWidth();
-
-    const height =
-        getProgramHeight();
-
-    return {
-        x: width / 400,
-        y: height / 400
-    };
-}
-
-function drawHandles(r) {
-    const size = 7;
-
-    const handles = [
-        [r.x, r.y],
-        [r.x + r.width / 2, r.y],
-        [r.x + r.width, r.y],
-        [r.x, r.y + r.height / 2],
-        [r.x + r.width, r.y + r.height / 2],
-        [r.x, r.y + r.height],
-        [r.x + r.width / 2, r.y + r.height],
-        [r.x + r.width, r.y + r.height]
-    ];
-
-    ctx.fillStyle =
-        "#ffffff";
-
-    ctx.strokeStyle =
-        "#111111";
-
-    ctx.lineWidth = 1;
-
-    for (const handle of handles) {
-        ctx.beginPath();
-
-        ctx.rect(
-            handle[0] - size / 2,
-            handle[1] - size / 2,
-            size,
-            size
-        );
-
-        ctx.fill();
-
-        ctx.stroke();
-    }
-}
-
-function drawRectangles(
-    preview = null
-) {
-    const width =
-        getProgramWidth();
-
-    const height =
-        getProgramHeight();
-
-    ctx.clearRect(
-        0,
-        0,
-        width,
-        height
+    return createProcessingHTML(
+        source,
+        canvasWidth,
+        canvasHeight
     );
-
-    for (
-        let i = 0;
-        i < rectangles.length;
-        i++
-    ) {
-        const r =
-            rectangles[i];
-
-        ctx.save();
-
-        if (r.original) {
-            ctx.fillStyle =
-                "rgba(40, 145, 255, 0.18)";
-
-            ctx.strokeStyle =
-                "rgba(90, 180, 255, 0.95)";
-        } else {
-            ctx.fillStyle =
-                "rgba(170, 80, 255, 0.18)";
-
-            ctx.strokeStyle =
-                "rgba(190, 120, 255, 0.95)";
-        }
-
-        if (
-            i === selectedRectangle
-        ) {
-            ctx.fillStyle =
-                "rgba(255, 210, 70, 0.2)";
-
-            ctx.strokeStyle =
-                "rgba(255, 220, 90, 1)";
-
-            ctx.lineWidth = 2;
-        } else {
-            ctx.lineWidth = 1.5;
-        }
-
-        ctx.fillRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        ctx.strokeRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        if (
-            mode === "edit" &&
-            i === selectedRectangle
-        ) {
-            drawHandles(r);
-        }
-
-        ctx.restore();
-    }
-
-    if (preview) {
-        ctx.save();
-
-        ctx.fillStyle =
-            "rgba(255, 255, 255, 0.1)";
-
-        ctx.strokeStyle =
-            "rgba(255, 255, 255, 0.9)";
-
-        ctx.setLineDash([
-            6,
-            4
-        ]);
-
-        ctx.strokeRect(
-            preview.x,
-            preview.y,
-            preview.width,
-            preview.height
-        );
-
-        ctx.fillRect(
-            preview.x,
-            preview.y,
-            preview.width,
-            preview.height
-        );
-
-        ctx.restore();
-    }
 }
 
-function getMousePosition(event) {
-    const bounds =
-        overlay.getBoundingClientRect();
+function findMatchingBrace(text, openIndex) {
+    let depth = 0;
+    let quote = null;
+    let escaped = false;
+    let lineComment = false;
+    let blockComment = false;
 
-    const width =
-        getProgramWidth();
+    for (let i = openIndex; i < text.length; i++) {
+        const c = text[i];
+        const n = text[i + 1];
 
-    const height =
-        getProgramHeight();
+        if (lineComment) {
+            if (c === "\n") {
+                lineComment = false;
+            }
+            continue;
+        }
 
-    return {
-        x: Math.max(
-            0,
-            Math.min(
-                width,
-                (event.clientX - bounds.left) *
-                (width / bounds.width)
-            )
-        ),
+        if (blockComment) {
+            if (c === "*" && n === "/") {
+                blockComment = false;
+                i++;
+            }
+            continue;
+        }
 
-        y: Math.max(
-            0,
-            Math.min(
-                height,
-                (event.clientY - bounds.top) *
-                (height / bounds.height)
-            )
-        )
-    };
-}
+        if (quote) {
+            if (escaped) {
+                escaped = false;
+            } else if (c === "\\") {
+                escaped = true;
+            } else if (c === quote) {
+                quote = null;
+            }
+            continue;
+        }
 
-function getRectangleAt(
-    x,
-    y
-) {
-    for (
-        let i = rectangles.length - 1;
-        i >= 0;
-        i--
-    ) {
-        const r =
-            rectangles[i];
+        if (c === "/" && n === "/") {
+            lineComment = true;
+            i++;
+            continue;
+        }
 
-        if (
-            x >= r.x &&
-            x <= r.x + r.width &&
-            y >= r.y &&
-            y <= r.y + r.height
-        ) {
-            return i;
+        if (c === "/" && n === "*") {
+            blockComment = true;
+            i++;
+            continue;
+        }
+
+        if (c === "\"" || c === "'" || c === "`") {
+            quote = c;
+            continue;
+        }
+
+        if (c === "{") {
+            depth++;
+        } else if (c === "}") {
+            depth--;
+
+            if (depth === 0) {
+                return i;
+            }
         }
     }
 
     return -1;
 }
 
-function getHandleAt(
-    x,
-    y,
-    r
-) {
-    const threshold = 10;
+function getMouseHandlerBodies(source) {
+    const handlers = [];
+    const pattern = /\b(?:mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*=\s*function\s*\([^)]*\)\s*\{|\bfunction\s+(?:mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*\([^)]*\)\s*\{/g;
 
-    const handles = [
-        ["nw", r.x, r.y],
-        [
-            "n",
-            r.x + r.width / 2,
-            r.y
-        ],
-        [
-            "ne",
-            r.x + r.width,
-            r.y
-        ],
-        [
-            "w",
-            r.x,
-            r.y + r.height / 2
-        ],
-        [
-            "e",
-            r.x + r.width,
-            r.y + r.height / 2
-        ],
-        [
-            "sw",
-            r.x,
-            r.y + r.height
-        ],
-        [
-            "s",
-            r.x + r.width / 2,
-            r.y + r.height
-        ],
-        [
-            "se",
-            r.x + r.width,
-            r.y + r.height
-        ]
-    ];
+    let match;
 
-    for (const handle of handles) {
-        if (
-            Math.abs(
-                x - handle[1]
-            ) <= threshold &&
-            Math.abs(
-                y - handle[2]
-            ) <= threshold
-        ) {
-            return handle[0];
+    while ((match = pattern.exec(source)) !== null) {
+        const openBrace = source.indexOf("{", match.index);
+
+        if (openBrace < 0) {
+            continue;
+        }
+
+        const closeBrace = findMatchingBrace(source, openBrace);
+
+        if (closeBrace < 0) {
+            continue;
+        }
+
+        handlers.push(source.slice(openBrace + 1, closeBrace));
+
+        pattern.lastIndex = closeBrace + 1;
+    }
+
+    return handlers;
+}
+
+function parseMouseRectangles(source) {
+    const handlers = getMouseHandlerBodies(source);
+
+    if (handlers.length === 0) {
+        return [];
+    }
+
+    const found = [];
+    const conditionPattern = /\bif\s*\(([^{}]*)\)/g;
+
+    for (const body of handlers) {
+        let match;
+
+        while ((match = conditionPattern.exec(body)) !== null) {
+            const condition = match[1];
+
+            if (
+                !/\bmouseX\b/.test(condition) ||
+                !/\bmouseY\b/.test(condition)
+            ) {
+                continue;
+            }
+
+            const xValues = [];
+            const yValues = [];
+
+            const xPattern = /mouseX\s*(<=|>=|<|>)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+            const yPattern = /mouseY\s*(<=|>=|<|>)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+
+            let xMatch;
+            let yMatch;
+
+            while ((xMatch = xPattern.exec(condition)) !== null) {
+                xValues.push({
+                    operator: xMatch[1],
+                    value: Number(xMatch[2])
+                });
+            }
+
+            while ((yMatch = yPattern.exec(condition)) !== null) {
+                yValues.push({
+                    operator: yMatch[1],
+                    value: Number(yMatch[2])
+                });
+            }
+
+            if (xValues.length < 2 || yValues.length < 2) {
+                continue;
+            }
+
+            let minX = Infinity;
+            let maxX = -Infinity;
+            let minY = Infinity;
+            let maxY = -Infinity;
+
+            for (const item of xValues) {
+                if (item.operator === ">=" || item.operator === ">") {
+                    minX = Math.max(minX, item.value);
+                } else {
+                    maxX = Math.min(maxX, item.value);
+                }
+            }
+
+            for (const item of yValues) {
+                if (item.operator === ">=" || item.operator === ">") {
+                    minY = Math.max(minY, item.value);
+                } else {
+                    maxY = Math.min(maxY, item.value);
+                }
+            }
+
+            if (
+                !Number.isFinite(minX) ||
+                !Number.isFinite(maxX) ||
+                !Number.isFinite(minY) ||
+                !Number.isFinite(maxY) ||
+                maxX <= minX ||
+                maxY <= minY
+            ) {
+                continue;
+            }
+
+            found.push({
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY,
+                originalX: minX,
+                originalY: minY,
+                originalWidth: maxX - minX,
+                originalHeight: maxY - minY,
+                original: true
+            });
         }
     }
 
-    return "";
+    return found;
 }
 
-function setMode(
-    nextMode
-) {
-    mode =
-        nextMode;
+function extractMouseRectangles(source) {
+    const parsedSource = isFullHTML(source)
+        ? extractProcessingScripts(source)
+        : source;
+
+    return parseMouseRectangles(parsedSource);
+}
+
+function extractProcessingScripts(html) {
+    const scripts = [];
+    const pattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    let match;
+
+    while ((match = pattern.exec(html)) !== null) {
+        const text = match[1];
+
+        if (
+            /\bmousePressed\b|\bmouseClicked\b|\bmouseReleased\b|\bmouseDragged\b/.test(text)
+        ) {
+            scripts.push(text);
+        }
+    }
+
+    return scripts.join("\n");
+}
+
+function sameRectangle(a, b) {
+    return (
+        Math.abs(a.x - b.x) < 0.01 &&
+        Math.abs(a.y - b.y) < 0.01 &&
+        Math.abs(a.width - b.width) < 0.01 &&
+        Math.abs(a.height - b.height) < 0.01
+    );
+}
+
+function getCanvasInformation() {
+    try {
+        const iframeRect = program.getBoundingClientRect();
+        const canvas = program.contentDocument.querySelector("canvas");
+
+        if (!canvas) {
+            return null;
+        }
+
+        const canvasRect = canvas.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
+
+        return {
+            x: iframeRect.left + canvasRect.left - stageRect.left,
+            y: iframeRect.top + canvasRect.top - stageRect.top,
+            width: canvasRect.width,
+            height: canvasRect.height
+        };
+    } catch {
+        return null;
+    }
+}
+
+function processingToScreen(rectangle) {
+    const canvas = getCanvasInformation();
+
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+        return {
+            x: rectangle.x,
+            y: rectangle.y,
+            width: rectangle.width,
+            height: rectangle.height
+        };
+    }
+
+    return {
+        x: canvas.x + rectangle.x * canvas.width / canvasWidth,
+        y: canvas.y + rectangle.y * canvas.height / canvasHeight,
+        width: rectangle.width * canvas.width / canvasWidth,
+        height: rectangle.height * canvas.height / canvasHeight
+    };
+}
+
+function screenToProcessing(rectangle) {
+    const canvas = getCanvasInformation();
+
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+        return {
+            x: rectangle.x,
+            y: rectangle.y,
+            width: rectangle.width,
+            height: rectangle.height
+        };
+    }
+
+    return {
+        x: (rectangle.x - canvas.x) * canvasWidth / canvas.width,
+        y: (rectangle.y - canvas.y) * canvasHeight / canvas.height,
+        width: rectangle.width * canvasWidth / canvas.width,
+        height: rectangle.height * canvasHeight / canvas.height
+    };
+}
+
+function drawRectangles() {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    for (let i = 0; i < rectangles.length; i++) {
+        const r = processingToScreen(rectangles[i]);
+
+        const selected = selectedRectangle === rectangles[i];
+
+        ctx.fillStyle = selected
+            ? "rgba(255,170,0,0.22)"
+            : rectangles[i].original
+                ? "rgba(0,140,255,0.22)"
+                : "rgba(70,220,120,0.22)";
+
+        ctx.fillRect(
+            r.x,
+            r.y,
+            r.width,
+            r.height
+        );
+
+        ctx.strokeStyle = selected
+            ? "#ffb000"
+            : rectangles[i].original
+                ? "#00aaff"
+                : "#48e080";
+
+        ctx.lineWidth = selected ? 3 : 2;
+
+        ctx.strokeRect(
+            r.x,
+            r.y,
+            r.width,
+            r.height
+        );
+
+        if (selected && mode === "edit") {
+            drawResizeHandles(r);
+        }
+    }
+
+    if (currentTempRectangle) {
+        ctx.fillStyle = "rgba(0,170,255,0.2)";
+        ctx.fillRect(
+            currentTempRectangle.x,
+            currentTempRectangle.y,
+            currentTempRectangle.width,
+            currentTempRectangle.height
+        );
+
+        ctx.strokeStyle = "#00aaff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+            currentTempRectangle.x,
+            currentTempRectangle.y,
+            currentTempRectangle.width,
+            currentTempRectangle.height
+        );
+    }
+}
+
+function drawResizeHandles(r) {
+    const s = RESIZE_HANDLE;
+
+    ctx.fillStyle = "#ffb000";
+
+    ctx.fillRect(r.x - s / 2, r.y - s / 2, s, s);
+    ctx.fillRect(r.x + r.width - s / 2, r.y - s / 2, s, s);
+    ctx.fillRect(r.x - s / 2, r.y + r.height - s / 2, s, s);
+    ctx.fillRect(
+        r.x + r.width - s / 2,
+        r.y + r.height - s / 2,
+        s,
+        s
+    );
+}
+
+function resizeOverlay() {
+    overlay.width = stage.clientWidth;
+    overlay.height = stage.clientHeight;
+    queueDraw();
+}
+
+function centerProgram() {
+    const left = Math.max(
+        0,
+        (stage.clientWidth - canvasWidth) / 2
+    );
+
+    const top = Math.max(
+        0,
+        (stage.clientHeight - canvasHeight) / 2
+    );
+
+    program.style.left = left + "px";
+    program.style.top = top + "px";
+    program.style.width = canvasWidth + "px";
+    program.style.height = canvasHeight + "px";
+
+    queueDraw();
+}
+
+function runProgram() {
+    const size = getCanvasSize();
+
+    canvasWidth = size.width;
+    canvasHeight = size.height;
+
+    const source = editor.value;
+
+    rectangles = extractMouseRectangles(source);
+    selectedRectangle = null;
+    currentTempRectangle = null;
+
+    editor.style.display = "none";
+    stage.style.display = "block";
+    outputs.style.display = "none";
+
+    centerProgram();
+
+    program.style.pointerEvents = "auto";
+    overlay.style.pointerEvents = "none";
+
+    program.srcdoc = getProgramHTML();
+
+    setStatus(
+        "Loaded " +
+        rectangles.length +
+        " mouse rectangle" +
+        (rectangles.length === 1 ? "" : "s")
+    );
+
+    setTimeout(function() {
+        centerProgram();
+        resizeOverlay();
+    }, 150);
+
+    setTimeout(function() {
+        centerProgram();
+        resizeOverlay();
+    }, 500);
+}
+
+function editProgram() {
+    stage.style.display = "none";
+    editor.style.display = "block";
+    outputs.style.display = "none";
+    contextMenu.style.display = "none";
+    setStatus("Code editor");
+}
+
+function setMode(newMode) {
+    mode = newMode;
+    contextMenu.style.display = "none";
 
     normalButton.classList.toggle(
         "active",
@@ -1185,840 +961,535 @@ function setMode(
         mode === "rect"
     );
 
-    editRectsButton.classList.toggle(
+    editRectButton.classList.toggle(
         "active",
         mode === "edit"
     );
 
-    editPanel.style.display =
-        mode === "edit"
-            ? "block"
-            : "none";
+    if (mode === "normal") {
+        program.style.pointerEvents = "auto";
+        overlay.style.pointerEvents = "none";
+        info.style.display = "none";
+        selectedRectangle = null;
+        queueDraw();
+        return;
+    }
 
-    info.style.display =
-        mode === "rect"
-            ? "block"
-            : "none";
+    program.style.pointerEvents = "none";
+    overlay.style.pointerEvents = "auto";
+    info.style.display = "block";
 
-    if (
-        mode === "normal"
-    ) {
-        program.style.zIndex =
-            "30";
-
-        program.style.pointerEvents =
-            "auto";
-
-        overlay.style.zIndex =
-            "1";
-
-        overlay.style.pointerEvents =
-            "none";
-
-        selectedRectangle =
-            -1;
-
-        contextMenu.style.display =
-            "none";
+    if (mode === "rect") {
+        info.textContent = "Drag to create a rectangle";
     } else {
-        program.style.zIndex =
-            "1";
-
-        program.style.pointerEvents =
-            "none";
-
-        overlay.style.zIndex =
-            "30";
-
-        overlay.style.pointerEvents =
-            "auto";
+        info.textContent =
+            "Drag rectangles • drag corners to resize • right-click for options";
     }
 
-    drawRectangles();
+    queueDraw();
 }
 
-function runProgram() {
-    const code =
-        editor.value;
-
-    rectangles =
-        extractMouseRectangles(
-            code
-        );
-
-    selectedRectangle =
-        -1;
-
-    contextRectangle =
-        -1;
-
-    const html =
-        isFullHTML(code)
-            ? code
-            : createProcessingHTML(
-                code
-            );
-
-    program.srcdoc =
-        html;
-
-    editor.style.display =
-        "none";
-
-    stage.style.display =
-        "block";
-
-    outputPanel.style.display =
-        "none";
-
-    setMode(
-        "normal"
-    );
-
-    setTimeout(
-        function() {
-            resizeProgramDisplay();
-            drawRectangles();
-        },
-        700
-    );
-}
-
-function editProgram() {
-    stage.style.display =
-        "none";
-
-    editor.style.display =
-        "block";
-
-    outputPanel.style.display =
-        "none";
-
-    contextMenu.style.display =
-        "none";
-}
-
-function createMouseCondition(
-    rectangle
-) {
-    const x1 =
-        Math.round(
-            rectangle.x
-        );
-
-    const y1 =
-        Math.round(
-            rectangle.y
-        );
-
-    const x2 =
-        Math.round(
-            rectangle.x +
-            rectangle.width
-        );
-
-    const y2 =
-        Math.round(
-            rectangle.y +
-            rectangle.height
-        );
-
-    return `if (mouseX > ${x1} && mouseX < ${x2} && mouseY > ${y1} && mouseY < ${y2}) {
-
-}`;
-}
-
-function wasRectangleUpdated(
-    rectangle
-) {
-    if (!rectangle.original) {
-        return false;
-    }
-
-    return (
-        rectangle.x !==
-            rectangle.originalX ||
-
-        rectangle.y !==
-            rectangle.originalY ||
-
-        rectangle.width !==
-            rectangle.originalWidth ||
-
-        rectangle.height !==
-            rectangle.originalHeight
-    );
-}
-
-function generateOutput() {
-    const original = [];
-
-    const updated = [];
-
-    const newRectangles = [];
-
-    for (
-        const rectangle of rectangles
-    ) {
-        if (
-            !rectangle.original
-        ) {
-            newRectangles.push(
-                rectangle
-            );
-        } else if (
-            wasRectangleUpdated(
-                rectangle
-            )
-        ) {
-            updated.push(
-                rectangle
-            );
-        } else {
-            original.push(
-                rectangle
-            );
-        }
-    }
+function getPointerPosition(event) {
+    const rect = overlay.getBoundingClientRect();
 
     return {
-        original:
-            original
-                .map(
-                    createMouseCondition
-                )
-                .join("\n\n"),
-
-        updated:
-            updated
-                .map(
-                    createMouseCondition
-                )
-                .join("\n\n"),
-
-        newRectangles:
-            newRectangles
-                .map(
-                    createMouseCondition
-                )
-                .join("\n\n")
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
     };
 }
 
-function updateOutputSection(
-    section,
-    textarea,
-    value
-) {
-    if (
-        value.trim() === ""
-    ) {
-        section.style.display =
-            "none";
-
-        textarea.value =
-            "";
-    } else {
-        section.style.display =
-            "block";
-
-        textarea.value =
-            value;
-    }
+function normalizeRectangle(x1, y1, x2, y2) {
+    return {
+        x: Math.min(x1, x2),
+        y: Math.min(y1, y2),
+        width: Math.abs(x2 - x1),
+        height: Math.abs(y2 - y1)
+    };
 }
 
-async function printOutput() {
-    const result =
-        generateOutput();
+function getRectangleAt(x, y) {
+    for (let i = rectangles.length - 1; i >= 0; i--) {
+        const r = processingToScreen(rectangles[i]);
 
-    updateOutputSection(
-        originalSection,
-        originalOutput,
-        result.original
-    );
-
-    updateOutputSection(
-        updatedSection,
-        updatedOutput,
-        result.updated
-    );
-
-    updateOutputSection(
-        newSection,
-        newOutput,
-        result.newRectangles
-    );
-
-    const hasOutput =
-        result.original ||
-        result.updated ||
-        result.newRectangles;
-
-    if (!hasOutput) {
-        outputPanel.style.display =
-            "none";
-
-        return;
-    }
-
-    outputPanel.style.display =
-        "flex";
-
-    const combined = [
-        result.original,
-        result.updated,
-        result.newRectangles
-    ]
-        .filter(Boolean)
-        .join("\n\n");
-
-    try {
-        await navigator.clipboard.writeText(
-            combined
-        );
-
-        printButton.textContent =
-            "Copied!";
-
-        setTimeout(
-            function() {
-                printButton.textContent =
-                    "Print / Copy";
-            },
-            1200
-        );
-    } catch {
-        const firstVisible =
-            document.querySelector(
-                ".outputSection[style*='block'] .outputCode"
-            );
-
-        if (firstVisible) {
-            firstVisible.focus();
-            firstVisible.select();
+        if (
+            x >= r.x &&
+            x <= r.x + r.width &&
+            y >= r.y &&
+            y <= r.y + r.height
+        ) {
+            return rectangles[i];
         }
     }
+
+    return null;
 }
 
-function duplicateRectangle(
-    index
-) {
-    if (
-        index < 0 ||
-        index >= rectangles.length
-    ) {
+function isNearResizeCorner(r, x, y) {
+    const corners = [
+        { x: r.x, y: r.y, type: "nw" },
+        { x: r.x + r.width, y: r.y, type: "ne" },
+        { x: r.x, y: r.y + r.height, type: "sw" },
+        {
+            x: r.x + r.width,
+            y: r.y + r.height,
+            type: "se"
+        }
+    ];
+
+    for (const corner of corners) {
+        if (
+            Math.abs(x - corner.x) <= RESIZE_HANDLE &&
+            Math.abs(y - corner.y) <= RESIZE_HANDLE
+        ) {
+            return corner.type;
+        }
+    }
+
+    return null;
+}
+
+function showContextMenu(event, rectangle) {
+    selectedRectangle = rectangle;
+
+    contextMenu.style.left = event.clientX + "px";
+    contextMenu.style.top = event.clientY + "px";
+    contextMenu.style.display = "block";
+
+    queueDraw();
+}
+
+function hideContextMenu() {
+    contextMenu.style.display = "none";
+}
+
+function duplicateSelected() {
+    if (!selectedRectangle) {
         return;
     }
 
-    const source =
-        rectangles[index];
-
     const copy = {
-        x:
-            source.x + 10,
-
-        y:
-            source.y + 10,
-
-        width:
-            source.width,
-
-        height:
-            source.height,
-
-        original:
-            false,
-
-        originalCode:
-            "",
-
-        originalX:
-            null,
-
-        originalY:
-            null,
-
-        originalWidth:
-            null,
-
-        originalHeight:
-            null,
-
-        id:
-            crypto.randomUUID()
+        x: selectedRectangle.x + 10,
+        y: selectedRectangle.y + 10,
+        width: selectedRectangle.width,
+        height: selectedRectangle.height,
+        originalX: selectedRectangle.x + 10,
+        originalY: selectedRectangle.y + 10,
+        originalWidth: selectedRectangle.width,
+        originalHeight: selectedRectangle.height,
+        original: false
     };
 
-    rectangles.push(
-        copy
-    );
+    rectangles.push(copy);
+    selectedRectangle = copy;
 
-    selectedRectangle =
-        rectangles.length - 1;
-
-    drawRectangles();
+    hideContextMenu();
+    queueDraw();
 }
 
-function copyRectangle(
-    index
-) {
-    if (
-        index < 0 ||
-        index >= rectangles.length
-    ) {
+function copySelected() {
+    if (!selectedRectangle) {
         return;
     }
 
     clipboardRectangle = {
-        ...rectangles[index],
-        id:
-            crypto.randomUUID()
+        x: selectedRectangle.x,
+        y: selectedRectangle.y,
+        width: selectedRectangle.width,
+        height: selectedRectangle.height,
+        originalX: selectedRectangle.originalX,
+        originalY: selectedRectangle.originalY,
+        originalWidth: selectedRectangle.originalWidth,
+        originalHeight: selectedRectangle.originalHeight,
+        original: selectedRectangle.original
     };
+
+    hideContextMenu();
 }
 
-function cutRectangle(
-    index
-) {
-    copyRectangle(index);
-
-    deleteRectangle(
-        index
-    );
-}
-
-function pasteRectangle() {
-    if (
-        !clipboardRectangle
-    ) {
+function cutSelected() {
+    if (!selectedRectangle) {
         return;
     }
 
-    const copy = {
-        ...clipboardRectangle,
-
-        x:
-            clipboardRectangle.x +
-            10,
-
-        y:
-            clipboardRectangle.y +
-            10,
-
-        original:
-            false,
-
-        originalCode:
-            "",
-
-        originalX:
-            null,
-
-        originalY:
-            null,
-
-        originalWidth:
-            null,
-
-        originalHeight:
-            null,
-
-        id:
-            crypto.randomUUID()
+    clipboardRectangle = {
+        x: selectedRectangle.x,
+        y: selectedRectangle.y,
+        width: selectedRectangle.width,
+        height: selectedRectangle.height,
+        originalX: selectedRectangle.originalX,
+        originalY: selectedRectangle.originalY,
+        originalWidth: selectedRectangle.originalWidth,
+        originalHeight: selectedRectangle.originalHeight,
+        original: selectedRectangle.original
     };
 
-    rectangles.push(
-        copy
+    rectangles = rectangles.filter(
+        r => r !== selectedRectangle
     );
 
-    selectedRectangle =
-        rectangles.length - 1;
+    selectedRectangle = null;
 
-    drawRectangles();
+    hideContextMenu();
+    queueDraw();
 }
 
-function deleteRectangle(
-    index
-) {
-    if (
-        index < 0 ||
-        index >= rectangles.length
-    ) {
+function pasteSelected() {
+    if (!clipboardRectangle) {
         return;
     }
 
-    rectangles.splice(
-        index,
-        1
-    );
+    const pasted = {
+        x: clipboardRectangle.x + 10,
+        y: clipboardRectangle.y + 10,
+        width: clipboardRectangle.width,
+        height: clipboardRectangle.height,
+        originalX: clipboardRectangle.x + 10,
+        originalY: clipboardRectangle.y + 10,
+        originalWidth: clipboardRectangle.width,
+        originalHeight: clipboardRectangle.height,
+        original: false
+    };
 
-    if (
-        selectedRectangle ===
-        index
-    ) {
-        selectedRectangle =
-            -1;
-    } else if (
-        selectedRectangle >
-        index
-    ) {
-        selectedRectangle--;
+    rectangles.push(pasted);
+    selectedRectangle = pasted;
+
+    hideContextMenu();
+    queueDraw();
+}
+
+function deleteSelected() {
+    if (!selectedRectangle) {
+        return;
     }
 
-    drawRectangles();
+    rectangles = rectangles.filter(
+        r => r !== selectedRectangle
+    );
+
+    selectedRectangle = null;
+
+    hideContextMenu();
+    queueDraw();
 }
 
-function showContextMenu(
-    x,
-    y,
-    index
-) {
-    contextRectangle =
-        index;
+function getRectangleOutput(rectangle) {
+    const x1 = Math.round(rectangle.x);
+    const y1 = Math.round(rectangle.y);
+    const x2 = Math.round(
+        rectangle.x + rectangle.width
+    );
+    const y2 = Math.round(
+        rectangle.y + rectangle.height
+    );
 
-    contextMenu.style.left =
-        x + "px";
-
-    contextMenu.style.top =
-        y + "px";
-
-    contextMenu.style.display =
-        "block";
-
-    const paste =
-        contextMenu.querySelector(
-            '[data-action="paste"]'
-        );
-
-    paste.style.display =
-        clipboardRectangle
-            ? "block"
-            : "none";
+    return (
+        "if (mouseX >= " + x1 +
+        " && mouseX <= " + x2 +
+        " && mouseY >= " + y1 +
+        " && mouseY <= " + y2 +
+        ") {\n\n}"
+    );
 }
 
-function hideContextMenu() {
-    contextMenu.style.display =
-        "none";
+function getOutputGroups() {
+    const original = [];
+    const updated = [];
+    const newlyCreated = [];
 
-    contextRectangle =
-        -1;
+    for (const rectangle of rectangles) {
+        const output = getRectangleOutput(rectangle);
+
+        if (!rectangle.original) {
+            newlyCreated.push(output);
+        } else if (
+            sameRectangle(
+                rectangle,
+                {
+                    x: rectangle.originalX,
+                    y: rectangle.originalY,
+                    width: rectangle.originalWidth,
+                    height: rectangle.originalHeight
+                }
+            )
+        ) {
+            original.push(output);
+        } else {
+            updated.push(output);
+        }
+    }
+
+    return {
+        original: original.join("\n\n"),
+        updated: updated.join("\n\n"),
+        newlyCreated: newlyCreated.join("\n\n")
+    };
+}
+
+function updateOutputBox(box, textarea, value) {
+    if (value.trim() === "") {
+        box.style.display = "none";
+        textarea.value = "";
+        return;
+    }
+
+    box.style.display = "block";
+    textarea.value = value;
+}
+
+async function printRectangles() {
+    const groups = getOutputGroups();
+
+    updateOutputBox(
+        originalBox,
+        originalOutput,
+        groups.original
+    );
+
+    updateOutputBox(
+        updatedBox,
+        updatedOutput,
+        groups.updated
+    );
+
+    updateOutputBox(
+        newBox,
+        newOutput,
+        groups.newlyCreated
+    );
+
+    const allOutput = [
+        groups.original,
+        groups.updated,
+        groups.newlyCreated
+    ]
+        .filter(Boolean)
+        .join("\n\n");
+
+    outputs.style.display =
+        allOutput.trim() === ""
+            ? "none"
+            : "flex";
+
+    if (allOutput.trim() !== "") {
+        try {
+            await navigator.clipboard.writeText(
+                allOutput
+            );
+
+            printButton.textContent = "Copied!";
+
+            setTimeout(function() {
+                printButton.textContent =
+                    "Print / Copy";
+            }, 1000);
+        } catch {
+        }
+    }
+}
+
+function clearRectangles() {
+    rectangles = [];
+    selectedRectangle = null;
+    currentTempRectangle = null;
+    outputs.style.display = "none";
+    hideContextMenu();
+    queueDraw();
 }
 
 overlay.addEventListener(
     "mousedown",
     function(event) {
-        if (
-            mode === "normal"
-        ) {
-            return;
-        }
-
-        const pos =
-            getMousePosition(
-                event
-            );
-
-        if (
-            event.button === 2
-        ) {
-            event.preventDefault();
-
-            if (
-                mode === "edit"
-            ) {
-                const index =
-                    getRectangleAt(
-                        pos.x,
-                        pos.y
-                    );
-
-                if (
-                    index !== -1
-                ) {
-                    selectedRectangle =
-                        index;
-
-                    drawRectangles();
-
-                    showContextMenu(
-                        event.clientX,
-                        event.clientY,
-                        index
-                    );
-                }
-            }
-
+        if (mode === "normal") {
             return;
         }
 
         hideContextMenu();
 
-        if (
-            mode === "rect"
-        ) {
-            startX =
-                pos.x;
+        const point = getPointerPosition(event);
 
-            startY =
-                pos.y;
-
-            drawing =
-                true;
-
-            return;
-        }
-
-        if (
-            mode === "edit"
-        ) {
-            const index =
+        if (mode === "edit") {
+            const rectangle =
                 getRectangleAt(
-                    pos.x,
-                    pos.y
+                    point.x,
+                    point.y
                 );
 
-            if (
-                index === -1
-            ) {
-                selectedRectangle =
-                    -1;
-
-                drawRectangles();
-
+            if (!rectangle) {
+                selectedRectangle = null;
+                queueDraw();
                 return;
             }
 
-            selectedRectangle =
-                index;
+            selectedRectangle = rectangle;
 
-            const rectangle =
-                rectangles[index];
+            const screenRectangle =
+                processingToScreen(rectangle);
 
-            const handle =
-                getHandleAt(
-                    pos.x,
-                    pos.y,
-                    rectangle
+            const corner =
+                isNearResizeCorner(
+                    screenRectangle,
+                    point.x,
+                    point.y
                 );
 
-            if (handle) {
-                editing =
-                    true;
-
-                editAction =
-                    "resize";
-
-                resizeHandle =
-                    handle;
+            if (corner) {
+                resizing = true;
+                resizeStartX = point.x;
+                resizeStartY = point.y;
+                resizeOriginal = {
+                    x: rectangle.x,
+                    y: rectangle.y,
+                    width: rectangle.width,
+                    height: rectangle.height
+                };
             } else {
-                editing =
-                    true;
-
-                editAction =
-                    "move";
+                dragging = true;
 
                 dragOffsetX =
-                    pos.x -
-                    rectangle.x;
+                    point.x - screenRectangle.x;
 
                 dragOffsetY =
-                    pos.y -
-                    rectangle.y;
+                    point.y - screenRectangle.y;
             }
 
-            drawRectangles();
+            queueDraw();
+            return;
         }
+
+        drawing = true;
+        startX = point.x;
+        startY = point.y;
+
+        currentTempRectangle = {
+            x: point.x,
+            y: point.y,
+            width: 0,
+            height: 0
+        };
+
+        queueDraw();
     }
 );
 
 overlay.addEventListener(
     "mousemove",
     function(event) {
-        if (
-            mode === "normal"
-        ) {
+        if (mode === "normal") {
             return;
         }
 
-        const pos =
-            getMousePosition(
-                event
-            );
+        const point = getPointerPosition(event);
 
-        const width =
-            getProgramWidth();
-
-        const height =
-            getProgramHeight();
-
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            const rectangle =
+        if (mode === "rect" && drawing) {
+            currentTempRectangle =
                 normalizeRectangle(
                     startX,
                     startY,
-                    pos.x,
-                    pos.y
+                    point.x,
+                    point.y
+                );
+
+            const processingRectangle =
+                screenToProcessing(
+                    currentTempRectangle
                 );
 
             info.textContent =
                 "X: " +
-                Math.round(
-                    rectangle.x
-                ) +
+                Math.round(processingRectangle.x) +
                 "  Y: " +
-                Math.round(
-                    rectangle.y
-                ) +
+                Math.round(processingRectangle.y) +
                 "  W: " +
-                Math.round(
-                    rectangle.width
-                ) +
+                Math.round(processingRectangle.width) +
                 "  H: " +
-                Math.round(
-                    rectangle.height
-                );
+                Math.round(processingRectangle.height);
 
-            drawRectangles(
-                rectangle
-            );
-
+            queueDraw();
             return;
         }
 
         if (
             mode === "edit" &&
-            editing &&
-            selectedRectangle !== -1
+            selectedRectangle &&
+            dragging
         ) {
-            const rectangle =
-                rectangles[
+            const screenRectangle =
+                processingToScreen(
                     selectedRectangle
-                ];
+                );
 
-            if (
-                editAction ===
-                "move"
-            ) {
-                rectangle.x =
-                    pos.x -
-                    dragOffsetX;
+            screenRectangle.x =
+                point.x - dragOffsetX;
 
-                rectangle.y =
-                    pos.y -
-                    dragOffsetY;
-            }
+            screenRectangle.y =
+                point.y - dragOffsetY;
 
-            if (
-                editAction ===
-                "resize"
-            ) {
-                if (
-                    resizeHandle.includes(
-                        "e"
-                    )
-                ) {
-                    rectangle.width =
-                        pos.x -
-                        rectangle.x;
-                }
+            const converted =
+                screenToProcessing(
+                    screenRectangle
+                );
 
-                if (
-                    resizeHandle.includes(
-                        "s"
-                    )
-                ) {
-                    rectangle.height =
-                        pos.y -
-                        rectangle.y;
-                }
+            selectedRectangle.x =
+                converted.x;
 
-                if (
-                    resizeHandle.includes(
-                        "w"
-                    )
-                ) {
-                    const right =
-                        rectangle.x +
-                        rectangle.width;
+            selectedRectangle.y =
+                converted.y;
 
-                    rectangle.x =
-                        pos.x;
+            selectedRectangle.original =
+                false;
 
-                    rectangle.width =
-                        right -
-                        rectangle.x;
-                }
+            queueDraw();
+            return;
+        }
 
-                if (
-                    resizeHandle.includes(
-                        "n"
-                    )
-                ) {
-                    const bottom =
-                        rectangle.y +
-                        rectangle.height;
+        if (
+            mode === "edit" &&
+            selectedRectangle &&
+            resizing
+        ) {
+            const dx =
+                point.x - resizeStartX;
 
-                    rectangle.y =
-                        pos.y;
+            const dy =
+                point.y - resizeStartY;
 
-                    rectangle.height =
-                        bottom -
-                        rectangle.y;
-                }
+            const canvas =
+                getCanvasInformation();
 
-                if (
-                    rectangle.width <
-                    2
-                ) {
-                    rectangle.width =
-                        2;
-                }
+            const scaleX =
+                canvas
+                    ? canvasWidth / canvas.width
+                    : 1;
 
-                if (
-                    rectangle.height <
-                    2
-                ) {
-                    rectangle.height =
-                        2;
-                }
-            }
+            const scaleY =
+                canvas
+                    ? canvasHeight / canvas.height
+                    : 1;
 
-            rectangle.x =
+            selectedRectangle.x =
+                resizeOriginal.x;
+
+            selectedRectangle.y =
+                resizeOriginal.y;
+
+            selectedRectangle.width =
                 Math.max(
-                    0,
-                    Math.min(
-                        width -
-                        rectangle.width,
-                        rectangle.x
-                    )
+                    MIN_RECT_SIZE,
+                    resizeOriginal.width +
+                    dx * scaleX
                 );
 
-            rectangle.y =
+            selectedRectangle.height =
                 Math.max(
-                    0,
-                    Math.min(
-                        height -
-                        rectangle.height,
-                        rectangle.y
-                    )
+                    MIN_RECT_SIZE,
+                    resizeOriginal.height +
+                    dy * scaleY
                 );
 
-            rectangle.width =
-                Math.min(
-                    rectangle.width,
-                    width -
-                    rectangle.x
-                );
+            selectedRectangle.original =
+                false;
 
-            rectangle.height =
-                Math.min(
-                    rectangle.height,
-                    height -
-                    rectangle.y
-                );
-
-            drawRectangles();
+            queueDraw();
         }
     }
 );
@@ -2026,108 +1497,58 @@ overlay.addEventListener(
 overlay.addEventListener(
     "mouseup",
     function(event) {
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            const pos =
-                getMousePosition(
-                    event
-                );
+        if (mode === "normal") {
+            return;
+        }
 
+        const point = getPointerPosition(event);
+
+        if (mode === "rect" && drawing) {
             const rectangle =
                 normalizeRectangle(
                     startX,
                     startY,
-                    pos.x,
-                    pos.y
+                    point.x,
+                    point.y
                 );
 
-            drawing =
-                false;
+            drawing = false;
+            currentTempRectangle = null;
 
             if (
-                rectangle.width >=
-                    2 &&
-                rectangle.height >=
-                    2
+                rectangle.width >= MIN_RECT_SIZE &&
+                rectangle.height >= MIN_RECT_SIZE
             ) {
+                const converted =
+                    screenToProcessing(
+                        rectangle
+                    );
+
                 rectangles.push({
-                    ...rectangle,
-
-                    original:
-                        false,
-
-                    originalCode:
-                        "",
-
-                    originalX:
-                        null,
-
-                    originalY:
-                        null,
-
-                    originalWidth:
-                        null,
-
-                    originalHeight:
-                        null,
-
-                    id:
-                        crypto.randomUUID()
+                    x: converted.x,
+                    y: converted.y,
+                    width: converted.width,
+                    height: converted.height,
+                    originalX: converted.x,
+                    originalY: converted.y,
+                    originalWidth: converted.width,
+                    originalHeight: converted.height,
+                    original: false
                 });
-
-                selectedRectangle =
-                    rectangles.length -
-                    1;
             }
 
-            drawRectangles();
+            info.textContent =
+                "Drag to create a rectangle";
 
+            queueDraw();
             return;
         }
 
-        if (
-            mode === "edit"
-        ) {
-            editing =
-                false;
-
-            editAction =
-                "";
-
-            resizeHandle =
-                "";
-
-            drawRectangles();
-        }
-    }
-);
-
-overlay.addEventListener(
-    "mouseleave",
-    function() {
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            drawing =
-                false;
-
-            drawRectangles();
-        }
-
-        if (
-            mode === "edit"
-        ) {
-            editing =
-                false;
-
-            editAction =
-                "";
-
-            resizeHandle =
-                "";
+        if (mode === "edit") {
+            dragging = false;
+            resizing = false;
+            resizeOriginal = null;
+            queueDraw();
         }
     }
 );
@@ -2135,121 +1556,63 @@ overlay.addEventListener(
 overlay.addEventListener(
     "contextmenu",
     function(event) {
-        event.preventDefault();
-    }
-);
+        if (mode !== "edit") {
+            return;
+        }
 
-document.addEventListener(
-    "mousedown",
-    function(event) {
-        if (
-            !contextMenu.contains(
-                event.target
-            ) &&
-            event.target !== overlay
-        ) {
+        event.preventDefault();
+
+        const point = getPointerPosition(event);
+
+        const rectangle =
+            getRectangleAt(
+                point.x,
+                point.y
+            );
+
+        if (rectangle) {
+            showContextMenu(
+                event,
+                rectangle
+            );
+        } else {
             hideContextMenu();
         }
     }
 );
 
 document.addEventListener(
-    "keydown",
+    "mousedown",
     function(event) {
-        if (
-            mode !== "edit"
-        ) {
-            return;
-        }
-
-        if (
-            event.key ===
-                "Delete" &&
-            selectedRectangle !== -1
-        ) {
-            deleteRectangle(
-                selectedRectangle
-            );
-        }
-
-        if (
-            event.key ===
-                "Escape"
-        ) {
-            selectedRectangle =
-                -1;
-
-            editing =
-                false;
-
-            drawRectangles();
+        if (!contextMenu.contains(event.target)) {
+            hideContextMenu();
         }
     }
 );
 
-contextMenu.addEventListener(
+duplicateButton.addEventListener(
     "click",
-    function(event) {
-        const item =
-            event.target.closest(
-                ".contextItem"
-            );
+    duplicateSelected
+);
 
-        if (!item) {
-            return;
-        }
+cutButton.addEventListener(
+    "click",
+    cutSelected
+);
 
-        const action =
-            item.dataset.action;
+copyButton.addEventListener(
+    "click",
+    copySelected
+);
 
-        const index =
-            contextRectangle;
+pasteButton.addEventListener(
+    "click",
+    pasteSelected
+);
 
-        hideContextMenu();
-
-        if (
-            action ===
-            "duplicate"
-        ) {
-            duplicateRectangle(
-                index
-            );
-        }
-
-        if (
-            action ===
-            "cut"
-        ) {
-            cutRectangle(
-                index
-            );
-        }
-
-        if (
-            action ===
-            "copy"
-        ) {
-            copyRectangle(
-                index
-            );
-        }
-
-        if (
-            action ===
-            "paste"
-        ) {
-            pasteRectangle();
-        }
-
-        if (
-            action ===
-            "delete"
-        ) {
-            deleteRectangle(
-                index
-            );
-        }
-    }
+deleteButton.addEventListener(
+    "click",
+    deleteSelected
 );
 
 runButton.addEventListener(
@@ -2265,80 +1628,91 @@ editButton.addEventListener(
 normalButton.addEventListener(
     "click",
     function() {
-        setMode(
-            "normal"
-        );
+        setMode("normal");
     }
 );
 
 rectButton.addEventListener(
     "click",
     function() {
-        setMode(
-            "rect"
-        );
+        setMode("rect");
     }
 );
 
-editRectsButton.addEventListener(
+editRectButton.addEventListener(
     "click",
     function() {
-        setMode(
-            "edit"
-        );
+        setMode("edit");
     }
 );
 
 printButton.addEventListener(
     "click",
-    printOutput
+    printRectangles
 );
 
 clearButton.addEventListener(
     "click",
-    function() {
-        rectangles = [];
-
-        selectedRectangle =
-            -1;
-
-        outputPanel.style.display =
-            "none";
-
-        originalOutput.value =
-            "";
-
-        updatedOutput.value =
-            "";
-
-        newOutput.value =
-            "";
-
-        drawRectangles();
-    }
+    clearRectangles
 );
 
 widthInput.addEventListener(
     "change",
-    resizeProgramDisplay
+    function() {
+        const size = getCanvasSize();
+
+        canvasWidth = size.width;
+
+        if (stage.style.display !== "none") {
+            centerProgram();
+        }
+    }
 );
 
 heightInput.addEventListener(
     "change",
-    resizeProgramDisplay
+    function() {
+        const size = getCanvasSize();
+
+        canvasHeight = size.height;
+
+        if (stage.style.display !== "none") {
+            centerProgram();
+        }
+    }
 );
 
 window.addEventListener(
     "resize",
-    drawRectangles
+    function() {
+        if (stage.style.display !== "none") {
+            centerProgram();
+            resizeOverlay();
+        }
+    }
 );
 
-setMode(
-    "normal"
+editor.addEventListener(
+    "keydown",
+    function(event) {
+        if (event.key === "Tab") {
+            event.preventDefault();
+
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+
+            editor.setRangeText(
+                "    ",
+                start,
+                end,
+                "end"
+            );
+        }
+    }
 );
 
-resizeProgramDisplay();
+setMode("normal");
+resizeOverlay();
 </script>
-
 </body>
 </html>
