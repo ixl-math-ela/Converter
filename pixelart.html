@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pixel Art Converter</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f172a;color:#e5e7eb;display:flex;flex-direction:column;min-height:100vh}
+main{flex:1;display:grid;grid-template-columns:minmax(260px,320px)minmax(420px,1fr);gap:8px;padding:8px 12px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:#020617;border:1px solid #1f2937;border-radius:8px;padding:8px;display:flex;flex-direction:column;min-height:0;font-size:10px}
+.uz{border-radius:6px;border:1px dashed #38bdf8;padding:10px;text-align:center;background:#0b1120;cursor:pointer}
+.uz.drag{border-color:#0ea5e9;background:#082f49}
+.uz input{display:none}
+.uz .i{font-size:18px;margin-bottom:4px;color:#38bdf8}
+.row{margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.row input[type=checkbox],.row input[type=radio]{cursor:pointer}
+.range-row{margin-top:4px;display:flex;align-items:center;gap:6px}
+.range-row input[type=range]{flex:1}
+.small{border-radius:4px;border:1px solid #1f2937;background:#020617;color:#e5e7eb;font-size:10px;padding:3px 5px;min-width:0}
+.small:focus{outline:none;border-color:#38bdf8}
+.btn{border-radius:4px;border:1px solid #1f2937;background:#0b1120;color:#e5e7eb;font-size:10px;padding:4px 8px;cursor:pointer}
+.btn.primary{border-color:#38bdf8;background:#0ea5e9;color:#0f172a}
+.btn:disabled{opacity:.4;cursor:default}
+.preview{margin-top:6px;display:grid;grid-template-columns:auto 1fr;gap:6px;align-items:flex-start}
+.preview-canvas{background:#0b1120;border-radius:6px;border:1px solid #1f2937;padding:6px}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:transparent}
+.info-row{display:flex;justify-content:space-between;margin-bottom:2px}
+.info-label{color:#64748b}
+.info-value{color:#38bdf8}
+.frames{margin-top:6px;border-radius:6px;border:1px solid #1f2937;background:#020617;padding:6px}
+.frames-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.frame-chip{padding:3px 6px;border-radius:999px;border:1px solid #1f2937;background:#0b1120;cursor:pointer}
+.frame-chip.active{border-color:#38bdf8;background:#082f49;color:#38bdf8}
+.frame-add{border-radius:999px;border:1px solid #1f2937;background:#0b1120;color:#38bdf8;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.slice{margin-top:6px;border-radius:6px;border:1px solid #1f2937;background:#020617;padding:6px}
+.palette{margin-top:6px;border-radius:6px;border:1px solid #1f2937;background:#020617;padding:6px}
+.palette-list{max-height:120px;overflow:auto;margin-top:4px}
+.palette-item{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:4px;margin-bottom:4px}
+.palette-swatch{width:14px;height:14px;border-radius:3px;border:1px solid #1f2937}
+.palette-symbol{width:18px;border-radius:3px;border:1px solid #1f2937;background:#020617;color:#e5e7eb;font-size:10px;text-align:center}
+.palette-color{border-radius:3px;border:1px solid #1f2937;background:#020617}
+.bottom-row{margin-top:6px;display:flex;align-items:center;gap:6px}
+.checkbox-row{margin-top:4px;display:flex;flex-wrap:wrap;gap:6px}
+.checkbox-row label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.view-row{display:flex;gap:8px;margin-bottom:4px}
+.view-row label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.code-box{flex:1;min-height:0}
+textarea{width:100%;height:100%;min-height:220px;resize:vertical;border-radius:6px;border:1px solid #1f2937;background:#020617;color:#e5e7eb;font-family:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;font-size:10px;padding:6px;white-space:pre}
+.grid-box{margin-top:4px;border-radius:6px;border:1px solid #1f2937;background:#020617;padding:6px;max-height:260px;overflow:auto;font-size:9px}
+.grid-section{margin-bottom:6px}
+.grid-title{color:#38bdf8;margin-bottom:2px}
+.grid-row{display:flex}
+.grid-cell{width:12px;height:12px;border:1px solid #1f2937;display:flex;align-items:center;justify-content:center;font-size:7px}
+.status-row{margin-top:4px;display:flex;justify-content:space-between;align-items:center;font-size:10px}
+.status{color:#64748b}
+.status.ok{color:#22c55e}
+.status.err{color:#ef4444}
+.hidden{display:none!important}
+.ctx{position:fixed;background:#020617;border-radius:6px;border:1px solid #1f2937;padding:4px;font-size:9px;z-index:1000;box-shadow:0 8px 16px rgba(0,0,0,.4)}
+.ctx button{width:100%;justify-content:flex-start;padding:3px 6px;border:none;background:transparent;color:#e5e7eb;font-size:9px;cursor:pointer;text-align:left}
+.ctx button:hover{background:#0b1120}
+</style>
+</head>
+<body>
+<main>
+<section class="panel">
+<div class="uz" id="uz">
+<input id="fileInput" type="file" accept="image/png,image/jpeg,image/gif" multiple>
+<div class="i">⬆️</div>
+<div>Drop or click to load images</div>
+<div>Multiple = frames · Animated toggle for animation</div>
+</div>
+
+<div class="row">
+<label><input type="checkbox" id="animated">Animated</label>
+<span>Max colors: <span id="maxColorsVal">64</span></span>
+</div>
+
+<div class="range-row">
+<span>Tolerance:</span>
+<input type="range" id="tolerance" min="0" max="64" value="0">
+<span id="toleranceVal">0</span>
+</div>
+
+<div class="row">
+<span>Scale factor:</span>
+<input id="scaleFactor" class="small" type="number" min="1" value="1">
+<button class="btn" id="applyScale">Apply</button>
+<button class="btn" id="resetScale">Reset</button>
+</div>
+
+<div class="preview hidden" id="previewBox">
+<div class="preview-canvas"><canvas id="previewCanvas"></canvas></div>
+<div>
+<div class="info-row"><span class="info-label">Size</span><span class="info-value" id="infoSize">-</span></div>
+<div class="info-row"><span class="info-label">Frames</span><span class="info-value" id="infoFrames">-</span></div>
+<div class="info-row"><span class="info-label">Colors</span><span class="info-value" id="infoColors">-</span></div>
+<div class="info-row"><span class="info-label">Transparent</span><span class="info-value" id="infoTransparent">-</span></div>
+</div>
+</div>
+
+<div class="frames hidden" id="framesBox">
+<div class="row">
+<span>Frames</span>
+<div style="display:flex;gap:4px;align-items:center">
+<button class="btn" id="resetSlice">Reset slice</button>
+<div class="frame-add" id="addFrame">+</div>
+</div>
+</div>
+<div class="frames-list" id="framesList"></div>
+</div>
+
+<div class="slice hidden" id="sliceBox">
+<div>Spritesheet slice (rows = animations)</div>
+<div class="row">
+<span>Horiz:</span><input id="sliceHoriz" class="small" type="number" min="1" value="1">
+<span>Vert:</span><input id="sliceVert" class="small" type="number" min="1" value="1">
+<button class="btn" id="sliceBtn">Slice</button>
+</div>
+<div class="row hidden" id="rowBox">
+<span>Frames per row:</span>
+<div id="rowInputs" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+</div>
+</div>
+
+<div class="palette">
+<div>Palette</div>
+<div class="palette-list" id="paletteList"></div>
+</div>
+
+<div class="bottom-row">
+<input id="baseName" class="small" type="text" value="apple">
+<button class="btn primary" id="generateBtn" disabled>Generate</button>
+</div>
+
+<div class="checkbox-row">
+<label><input type="checkbox" id="includeDraw" checked>Include drawPixelArt</label>
+<label><input type="checkbox" id="includeCall" checked>Include example call</label>
+</div>
+</section>
+
+<section class="panel">
+<div class="view-row">
+<label><input type="radio" name="viewMode" value="code" checked>Code</label>
+<label><input type="radio" name="viewMode" value="grid">Grid</label>
+</div>
+
+<div class="code-box" id="codeBox">
+<textarea id="codeOutput" spellcheck="false"></textarea>
+</div>
+
+<div class="grid-box hidden" id="gridBox"></div>
+
+<div class="status-row">
+<div class="status" id="statusText">Waiting for images…</div>
+<div><button class="btn" id="copyBtn" disabled>Copy</button></div>
+</div>
+</section>
+</main>
+
+<div id="frameContext" class="ctx hidden">
+<button data-action="left">Move left</button>
+<button data-action="right">Move right</button>
+<button data-action="delete">Delete</button>
+<button data-action="png">Download PNG</button>
+</div>
+<script>
+/* ---------- ELEMENTS ---------- */
+const uz = document.getElementById("uz");
+const fileInput = document.getElementById("fileInput");
+const animated = document.getElementById("animated");
+const maxColorsVal = document.getElementById("maxColorsVal");
+const tolerance = document.getElementById("tolerance");
+const toleranceVal = document.getElementById("toleranceVal");
+const scaleFactor = document.getElementById("scaleFactor");
+const applyScale = document.getElementById("applyScale");
+const resetScale = document.getElementById("resetScale");
+const previewBox = document.getElementById("previewBox");
+const previewCanvas = document.getElementById("previewCanvas");
+const infoSize = document.getElementById("infoSize");
+const infoFrames = document.getElementById("infoFrames");
+const infoColors = document.getElementById("infoColors");
+const infoTransparent = document.getElementById("infoTransparent");
+const framesBox = document.getElementById("framesBox");
+const framesList = document.getElementById("framesList");
+const addFrame = document.getElementById("addFrame");
+const sliceBox = document.getElementById("sliceBox");
+const sliceHoriz = document.getElementById("sliceHoriz");
+const sliceVert = document.getElementById("sliceVert");
+const sliceBtn = document.getElementById("sliceBtn");
+const resetSlice = document.getElementById("resetSlice");
+const rowBox = document.getElementById("rowBox");
+const rowInputs = document.getElementById("rowInputs");
+const paletteList = document.getElementById("paletteList");
+const baseName = document.getElementById("baseName");
+const generateBtn = document.getElementById("generateBtn");
+const includeDraw = document.getElementById("includeDraw");
+const includeCall = document.getElementById("includeCall");
+const codeOutput = document.getElementById("codeOutput");
+const gridBox = document.getElementById("gridBox");
+const codeBox = document.getElementById("codeBox");
+const statusText = document.getElementById("statusText");
+const copyBtn = document.getElementById("copyBtn");
+const frameContext = document.getElementById("frameContext");
+const viewMode = document.querySelectorAll("input[name=viewMode]");
+
+/* ---------- STATE ---------- */
+let frames = [];
+let originalFrames = [];
+let active = 0;
+let palette = [];
+let sliced = null;
+let rowCounts = [];
+let ctxIndex = null;
+
+const SYMBOLS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+/* ---------- HELPERS ---------- */
+function setStatus(t, c) {
+    statusText.textContent = t;
+    statusText.className = "status " + (c || "muted");
+}
+function clampName(n) {
+    n = (n || "").trim().replace(/[^a-zA-Z0-9_]/g, "");
+    if (!n) n = "sprite";
+    if (/^[0-9]/.test(n)) n = "_" + n;
+    return n;
+}
+function isT(a) { return a === 0; }
+function dist2(a, b) {
+    let dr = a.r - b.r, dg = a.g - b.g, db = a.b - b.b;
+    return dr*dr + dg*dg + db*db;
+}
+
+/* ---------- FILE LOADING ---------- */
+uz.onclick = () => fileInput.click();
+fileInput.onchange = e => loadFiles(e.target.files);
+
+uz.ondragover = e => { e.preventDefault(); uz.classList.add("drag"); };
+uz.ondragleave = e => { e.preventDefault(); uz.classList.remove("drag"); };
+uz.ondrop = e => {
+    e.preventDefault();
+    uz.classList.remove("drag");
+    loadFiles(e.dataTransfer.files);
+};
+
+function loadFiles(list) {
+    let files = [...list].filter(f => /^image\/(png|jpeg|gif)$/i.test(f.type));
+    if (!files.length) return setStatus("No valid images.", "err");
+
+    Promise.all(files.map(loadImage)).then(imgs => {
+        frames = imgs.map(imgToFrame);
+        originalFrames = frames.map(f => ({ imageData: f.imageData, width: f.width, height: f.height }));
+        sliced = null;
+        rowCounts = [];
+        active = 0;
+        updatePreview();
+        updateFramesUI();
+        generateBtn.disabled = false;
+    });
+}
+
+function loadImage(file) {
+    return new Promise((res, rej) => {
+        let r = new FileReader();
+        r.onload = e => {
+            let img = new Image();
+            img.onload = () => res(img);
+            img.onerror = () => rej();
+            img.src = e.target.result;
+        };
+        r.onerror = () => rej();
+        r.readAsDataURL(file);
+    });
+}
+
+function imgToFrame(img) {
+    let c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    let x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(img, 0, 0);
+    return { imageData: x.getImageData(0, 0, c.width, c.height), width: c.width, height: c.height };
+}
+
+/* ---------- SCALING ---------- */
+applyScale.onclick = () => {
+    if (!frames.length) return;
+    let f = Math.max(1, parseInt(scaleFactor.value) || 1);
+
+    frames = frames.map(fr => {
+        let nw = Math.max(1, Math.floor(fr.width / f));
+        let nh = Math.max(1, Math.floor(fr.height / f));
+        let c = document.createElement("canvas");
+        c.width = nw; c.height = nh;
+        let x = c.getContext("2d", { willReadFrequently: true });
+        x.imageSmoothingEnabled = false;
+
+        let tc = document.createElement("canvas");
+        tc.width = fr.width; tc.height = fr.height;
+        tc.getContext("2d").putImageData(fr.imageData, 0, 0);
+
+        x.drawImage(tc, 0, 0, fr.width, fr.height, 0, 0, nw, nh);
+        return { imageData: x.getImageData(0, 0, nw, nh), width: nw, height: nh };
+    });
+
+    originalFrames = frames.map(f => ({ imageData: f.imageData, width: f.width, height: f.height }));
+    sliced = null;
+    rowCounts = [];
+    active = 0;
+    updatePreview();
+    updateFramesUI();
+    setStatus("Scaled.", "ok");
+};
+
+resetScale.onclick = () => {
+    if (!originalFrames.length) return;
+    frames = originalFrames.map(f => ({ imageData: f.imageData, width: f.width, height: f.height }));
+    sliced = null;
+    rowCounts = [];
+    active = 0;
+    updatePreview();
+    updateFramesUI();
+    setStatus("Scale reset.", "ok");
+};
+
+/* ---------- PREVIEW ---------- */
+function updatePreview() {
+    if (!frames.length) {
+        previewBox.classList.add("hidden");
+        return;
+    }
+    let fr = frames[active];
+    let w = fr.width, h = fr.height;
+    let s = Math.floor(160 / Math.max(w, h)) || 1;
+
+    previewCanvas.width = w * s;
+    previewCanvas.height = h * s;
+
+    let x = previewCanvas.getContext("2d");
+    x.imageSmoothingEnabled = false;
+
+    let tc = document.createElement("canvas");
+    tc.width = w; tc.height = h;
+    tc.getContext("2d").putImageData(fr.imageData, 0, 0);
+
+    x.drawImage(tc, 0, 0, w*s, h*s);
+
+    previewBox.classList.remove("hidden");
+    infoSize.textContent = w + "×" + h;
+    infoFrames.textContent = frames.length;
+
+    let st = computeStats();
+    infoColors.textContent = st.colors;
+    infoTransparent.textContent = st.trans;
+}
+
+function computeStats() {
+    let u = new Set(), t = 0;
+    frames.forEach(fr => {
+        let d = fr.imageData.data, w = fr.width, h = fr.height;
+        for (let y=0; y<h; y++)
+            for (let x=0; x<w; x++) {
+                let i = (y*w+x)*4;
+                let a = d[i+3];
+                if (isT(a)) t++;
+                else u.add(d[i]+","+d[i+1]+","+d[i+2]+","+a);
+            }
+    });
+    return { colors: u.size, trans: t };
+}
+
+/* ---------- FRAME LIST ---------- */
+function updateFramesUI() {
+    if (!frames.length) {
+        framesBox.classList.add("hidden");
+        return;
+    }
+    framesBox.classList.remove("hidden");
+    framesList.innerHTML = "";
+
+    frames.forEach((fr, i) => {
+        let chip = document.createElement("div");
+        chip.className = "frame-chip" + (i === active ? " active" : "");
+        chip.textContent = "F" + i;
+        chip.onclick = () => { active = i; updateFramesUI(); updatePreview(); };
+        chip.oncontextmenu = e => {
+            e.preventDefault();
+            ctxIndex = i;
+            showContext(e.clientX, e.clientY);
+        };
+        framesList.appendChild(chip);
+    });
+
+    if (animated.checked && frames.length === 1)
+        sliceBox.classList.remove("hidden");
+    else
+        sliceBox.classList.add("hidden");
+}
+
+animated.onchange = () => { updateFramesUI(); updatePreview(); };
+addFrame.onclick = () => fileInput.click();
+
+/* ---------- SLICING ---------- */
+sliceBtn.onclick = () => {
+    if (!frames.length) return;
+    let base = frames[0];
+    let h = Math.max(1, parseInt(sliceHoriz.value) || 1);
+    let v = Math.max(1, parseInt(sliceVert.value) || 1);
+
+    let fw = Math.floor(base.width / h);
+    let fh = Math.floor(base.height / v);
+    if (fw <= 0 || fh <= 0) return setStatus("Bad slice.", "err");
+
+    let c = document.createElement("canvas");
+    c.width = base.width; c.height = base.height;
+    c.getContext("2d").putImageData(base.imageData, 0, 0);
+
+    sliced = [];
+    frames = [];
+    for (let ry=0; ry<v; ry++) {
+        let row = [];
+        for (let rx=0; rx<h; rx++) {
+            let sx = rx*fw, sy = ry*fh;
+            let sc = document.createElement("canvas");
+            sc.width = fw; sc.height = fh;
+            let x = sc.getContext("2d");
+            x.drawImage(c, sx, sy, fw, fh, 0, 0, fw, fh);
+            let id = x.getImageData(0, 0, fw, fh);
+            let fr = { imageData: id, width: fw, height: fh };
+            row.push(fr);
+            frames.push(fr);
+        }
+        sliced.push(row);
+    }
+
+    rowCounts = new Array(v).fill(h);
+    buildRowInputs(v, h);
+
+    active = 0;
+    updateFramesUI();
+    updatePreview();
+    setStatus("Sliced.", "ok");
+};
+
+function buildRowInputs(v, h) {
+    rowBox.classList.remove("hidden");
+    rowInputs.innerHTML = "";
+    for (let r=0; r<v; r++) {
+        let inp = document.createElement("input");
+        inp.type = "number";
+        inp.className = "small";
+        inp.min = "0";
+        inp.value = h;
+        inp.dataset.row = r;
+        inp.oninput = function() {
+            let idx = parseInt(this.dataset.row);
+            let val = parseInt(this.value);
+            if (isNaN(val) || val < 0) val = 0;
+            if (val > sliced[idx].length) val = sliced[idx].length;
+            rowCounts[idx] = val;
+        };
+        rowInputs.appendChild(inp);
+    }
+}
+
+resetSlice.onclick = () => {
+    if (!originalFrames.length) return;
+    frames = originalFrames.map(f => ({ imageData: f.imageData, width: f.width, height: f.height }));
+    sliced = null;
+    rowCounts = [];
+    active = 0;
+    updateFramesUI();
+    updatePreview();
+    rowBox.classList.add("hidden");
+    rowInputs.innerHTML = "";
+    setStatus("Slice reset.", "ok");
+};
+
+/* ---------- PALETTE ---------- */
+tolerance.oninput = () => toleranceVal.textContent = tolerance.value;
+
+function buildPalette() {
+    palette = [];
+    let tol = parseInt(tolerance.value) || 0;
+    let th = tol * tol;
+    let si = 0;
+
+    frames.forEach(fr => {
+        let d = fr.imageData.data, w = fr.width, h = fr.height;
+        for (let y=0; y<h; y++)
+            for (let x=0; x<w; x++) {
+                let i = (y*w+x)*4;
+                let r = d[i], g = d[i+1], b = d[i+2], a = d[i+3];
+                if (isT(a)) continue;
+
+                let c = { r, g, b, a };
+                let idx = -1;
+                for (let j=0; j<palette.length; j++) {
+                    if (dist2(c, palette[j]) <= th) { idx = j; break; }
+                }
+                if (idx === -1) {
+                    if (si >= SYMBOLS.length) continue;
+                    palette.push({ r, g, b, a, s: SYMBOLS[si++] });
+                }
+            }
+    });
+
+    updatePaletteUI();
+}
+
+function updatePaletteUI() {
+    paletteList.innerHTML = "";
+    palette.forEach(p => {
+        let item = document.createElement("div");
+        item.className = "palette-item";
+
+        let sw = document.createElement("div");
+        sw.className = "palette-swatch";
+        sw.style.backgroundColor = `rgb(${p.r},${p.g},${p.b})`;
+
+        let sym = document.createElement("input");
+        sym.type = "text";
+        sym.maxLength = 1;
+        sym.className = "palette-symbol";
+        sym.value = p.s;
+        sym.oninput = () => p.s = (sym.value || " ").charAt(0);
+
+        let col = document.createElement("input");
+        col.type = "color";
+        col.className = "palette-color";
+        col.value = rgbToHex(p.r, p.g, p.b);
+        col.oninput = () => {
+            let rgb = hexToRgb(col.value);
+            if (!rgb) return;
+            p.r = rgb.r; p.g = rgb.g; p.b = rgb.b;
+            sw.style.backgroundColor = `rgb(${p.r},${p.g},${p.b})`;
+        };
+
+        item.appendChild(sw);
+        item.appendChild(sym);
+        item.appendChild(col);
+        paletteList.appendChild(item);
+    });
+}
+
+function rgbToHex(r,g,b){
+    let h=v=>("0"+v.toString(16)).slice(-2);
+    return "#"+h(r)+h(g)+h(b);
+}
+function hexToRgb(h){
+    let m=/^#?([a-fA-F0-9]{6})$/.exec(h);
+    if(!m)return null;
+    let v=parseInt(m[1],16);
+    return {r:(v>>16)&255,g:(v>>8)&255,b:v&255};
+}
+
+/* ---------- BITMAP ---------- */
+function bitmapForFrame(fr) {
+    let d = fr.imageData.data, w = fr.width, h = fr.height;
+    let rows = [];
+
+    for (let y=0; y<h; y++) {
+        let row = "";
+        for (let x=0; x<w; x++) {
+            let i = (y*w+x)*4;
+            let r=d[i], g=d[i+1], b=d[i+2], a=d[i+3];
+            if (isT(a)) { row+=" "; continue; }
+
+            let c={r,g,b,a}, sym=" ";
+            for (let p of palette)
+                if (p.r===r && p.g===g && p.b===b && p.a===a) { sym=p.s; break; }
+
+            if (sym===" ") {
+                let best=null, bd=1e9;
+                for (let p of palette) {
+                    let dd=dist2(c,p);
+                    if (dd<bd) { bd=dd; best=p; }
+                }
+                if (best) sym=best.s;
+            }
+            row+=sym;
+        }
+        row=row.replace(/\s+$/,"");
+        rows.push(row);
+    }
+    return rows;
+}
+
+/* ---------- GRID VIEW ---------- */
+function buildGridView() {
+    gridBox.innerHTML = "";
+
+    let sec = document.createElement("div");
+    sec.className = "grid-section";
+    let t = document.createElement("div");
+    t.className = "grid-title";
+    t.textContent = "Palette";
+    sec.appendChild(t);
+
+    let r = document.createElement("div");
+    r.className = "grid-row";
+    palette.forEach(p => {
+        let c = document.createElement("div");
+        c.className = "grid-cell";
+        c.style.backgroundColor = `rgb(${p.r},${p.g},${p.b})`;
+        c.textContent = p.s;
+        r.appendChild(c);
+    });
+    sec.appendChild(r);
+    gridBox.appendChild(sec);
+
+    if (sliced && rowCounts.length) {
+        sliced.forEach((row, ri) => {
+            let sec2 = document.createElement("div");
+            sec2.className = "grid-section";
+            let tt = document.createElement("div");
+            tt.className = "grid-title";
+            tt.textContent = "Anim " + (ri+1);
+            sec2.appendChild(tt);
+
+            let count = rowCounts[ri];
+            for (let f=0; f<count; f++) {
+                let bm = bitmapForFrame(row[f]);
+                bm.forEach(line => {
+                    let rr = document.createElement("div");
+                    rr.className = "grid-row";
+                    for (let ch of line) {
+                        let cell = document.createElement("div");
+                        cell.className = "grid-cell";
+
+                        let p = palette.find(pp => pp.s === ch);
+                        if (p) {
+                            cell.style.backgroundColor = `rgb(${p.r},${p.g},${p.b})`;
+                            cell.textContent = ch;
+                        } else {
+                            cell.textContent = ch === " " ? "" : ch;
+                        }
+                        rr.appendChild(cell);
+                    }
+                    sec2.appendChild(rr);
+                });
+            }
+            gridBox.appendChild(sec2);
+        });
+    } else {
+        let sec3 = document.createElement("div");
+        sec3.className = "grid-section";
+        let tt2 = document.createElement("div");
+        tt2.className = "grid-title";
+        tt2.textContent = "Bitmap";
+        sec3.appendChild(tt2);
+
+        let fr = frames[active];
+        let bm = bitmapForFrame(fr);
+
+        bm.forEach(line => {
+            let rr = document.createElement("div");
+            rr.className = "grid-row";
+            for (let ch of line) {
+                let cell = document.createElement("div");
+                cell.className = "grid-cell";
+                let p = palette.find(pp => pp.s === ch);
+                if (p) {
+                    cell.style.backgroundColor = `rgb(${p.r},${p.g},${p.b})`;
+                    cell.textContent = ch;
+                } else {
+                    cell.textContent = ch === " " ? "" : ch;
+                }
+                rr.appendChild(cell);
+            }
+            sec3.appendChild(rr);
+        });
+
+        gridBox.appendChild(sec3);
+    }
+}
+
+/* ---------- VIEW MODE ---------- */
+viewMode.forEach(r => {
+    r.onchange = () => {
+        let mode = document.querySelector("input[name=viewMode]:checked").value;
+        if (mode === "code") {
+            codeBox.classList.remove("hidden");
+            gridBox.classList.add("hidden");
+        } else {
+            codeBox.classList.add("hidden");
+            gridBox.classList.remove("hidden");
+            if (frames.length) {
+                buildPalette();
+                buildGridView();
+            }
+        }
+    };
+});
+
+/* ---------- CONTEXT MENU ---------- */
+function showContext(x, y) {
+    frameContext.style.left = x + "px";
+    frameContext.style.top = y + "px";
+    frameContext.classList.remove("hidden");
+}
+
+document.addEventListener("click", () => {
+    frameContext.classList.add("hidden");
+});
+
+frameContext.onclick = e => {
+    let a = e.target.dataset.action;
+    if (!a || ctxIndex == null) return;
+
+    if (a === "left") {
+        if (ctxIndex > 0) {
+            let tmp = frames[ctxIndex];
+            frames[ctxIndex] = frames[ctxIndex - 1];
+            frames[ctxIndex - 1] = tmp;
+            active = ctxIndex - 1;
+        }
+    }
+
+    else if (a === "right") {
+        if (ctxIndex < frames.length - 1) {
+            let tmp = frames[ctxIndex];
+            frames[ctxIndex] = frames[ctxIndex + 1];
+            frames[ctxIndex + 1] = tmp;
+            active = ctxIndex + 1;
+        }
+    }
+
+    else if (a === "delete") {
+        deleteFrame(ctxIndex);
+    }
+
+    else if (a === "png") {
+        downloadFrame(ctxIndex);
+    }
+
+    frameContext.classList.add("hidden");
+    updateFramesUI();
+    updatePreview();
+};
+
+/* ---------- DELETE FRAME ---------- */
+function deleteFrame(idx) {
+    if (idx < 0 || idx >= frames.length) return;
+
+    frames.splice(idx, 1);
+
+    if (sliced && rowCounts.length) {
+        let total = 0;
+        for (let r = 0; r < rowCounts.length; r++) {
+            let count = rowCounts[r];
+            if (idx < total + count) {
+                let pos = idx - total;
+                if (pos < rowCounts[r]) {
+                    sliced[r].splice(pos, 1);
+                    rowCounts[r]--;
+                    if (rowCounts[r] < 0) rowCounts[r] = 0;
+                }
+                break;
+            }
+            total += count;
+        }
+    }
+
+    if (frames.length === 0) active = 0;
+    else if (active >= frames.length) active = frames.length - 1;
+}
+
+/* ---------- DOWNLOAD FRAME ---------- */
+function downloadFrame(idx) {
+    if (idx < 0 || idx >= frames.length) return;
+    let fr = frames[idx];
+
+    let c = document.createElement("canvas");
+    c.width = fr.width;
+    c.height = fr.height;
+    c.getContext("2d").putImageData(fr.imageData, 0, 0);
+
+    let url = c.toDataURL("image/png");
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "frame_" + idx + ".png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+/* ---------- GENERATE CODE ---------- */
+generateBtn.onclick = () => {
+    if (!frames.length) return setStatus("No frames.", "err");
+
+    buildPalette();
+    if (!palette.length) return setStatus("No colors.", "err");
+
+    let base = clampName(baseName.value);
+    let colorsVar = base + "Colors";
+    let animBase = base + "Anim";
+    let bitmapVar = base + "Bitmap";
+
+    let code = "";
+    let used = new Set();
+
+    /* drawPixelArt */
+    if (includeDraw.checked) {
+        code +=
+`function drawPixelArt(m,p,x,y,w,h,s,l){
+pushMatrix();
+w=w||h;h=h||w;
+var f=Array.isArray(m[0])?m:[m];
+var fc=frameCount||0;
+var sp=(s*10)||1;
+var i=0;
+if(typeof l==="number"){i=Math.max(0,Math.min(f.length-1,l))}
+else if(l==="loop"){i=Math.floor(fc/sp)%f.length}
+else{var t=Math.floor(fc/sp);i=Math.min(t,f.length-1)}
+var bm=f[i];
+for(var j=0;j<bm.length;j++){
+for(var k=0;k<bm[j].length;k++){
+var c=p[bm[j][k]];
+if(c){fill(c);stroke(c);rect(x+k*w,y+j*h,w,h)}
+}}
+popMatrix();
+}
+
+`;
+    }
+
+    /* STATIC MODE */
+    if (!animated.checked || (!sliced && frames.length === 1)) {
+        let fr = frames[active];
+        let bm = bitmapForFrame(fr);
+
+        bm.forEach(line => {
+            for (let ch of line) if (ch !== " ") used.add(ch);
+        });
+
+        let pal = palette.filter(p => used.has(p.s));
+
+        code += "var " + colorsVar + "={\n";
+        pal.forEach((p, i) => {
+            code += `    "${p.s}": color(${p.r},${p.g},${p.b})${i===pal.length-1?"":","}\n`;
+        });
+        code += "};\n\n";
+
+        code += "var " + bitmapVar + "=[\n";
+        bm.forEach((line, i) => {
+            code += `    "${line.replace(/\\/g,"\\\\").replace(/"/g,'\\"')}"${i===bm.length-1?"":","}\n`;
+        });
+        code += "];\n\n";
+
+        if (includeCall.checked) {
+            code += `background(255,255,255);
+drawPixelArt(${bitmapVar},${colorsVar},20,20,20,20,1,"loop");
+`;
+        }
+
+        codeOutput.value = code;
+        copyBtn.disabled = false;
+        setStatus("Code generated.","ok");
+        return;
+    }
+
+    /* ANIMATED MODE */
+    let animations = [];
+
+    if (sliced && rowCounts.length) {
+        for (let r = 0; r < sliced.length; r++) {
+            let count = rowCounts[r];
+            let arr = [];
+            for (let f = 0; f < count; f++) {
+                let bm = bitmapForFrame(sliced[r][f]);
+                bm.forEach(line => {
+                    for (let ch of line) if (ch !== " ") used.add(ch);
+                });
+                arr.push(bm);
+            }
+            animations.push(arr);
+        }
+    } else {
+        let arr = [];
+        frames.forEach(fr => {
+            let bm = bitmapForFrame(fr);
+            bm.forEach(line => {
+                for (let ch of line) if (ch !== " ") used.add(ch);
+            });
+            arr.push(bm);
+        });
+        animations.push(arr);
+    }
+
+    let pal = palette.filter(p => used.has(p.s));
+
+    code += "var " + colorsVar + "={\n";
+    pal.forEach((p, i) => {
+        code += `    "${p.s}": color(${p.r},${p.g},${p.b})${i===pal.length-1?"":","}\n`;
+    });
+    code += "};\n\n";
+
+    animations.forEach((anim, i) => {
+        let name = animBase + (i+1);
+        code += "var " + name + "=[\n";
+        anim.forEach((bm, fi) => {
+            code += "    [\n";
+            bm.forEach((line, li) => {
+                code += `        "${line.replace(/\\/g,"\\\\").replace(/"/g,'\\"')}"${li===bm.length-1?"":","}\n`;
+            });
+            code += "    ]" + (fi===anim.length-1?"":",") + "\n";
+        });
+        code += "];\n\n";
+
+        if (i === 0 && includeCall.checked) {
+            code += `background(255,255,255);
+drawPixelArt(${name},${colorsVar},20,20,20,20,1,"loop");
+`;
+        }
+    });
+
+    codeOutput.value = code;
+    copyBtn.disabled = false;
+    setStatus("Code generated.","ok");
+};
+
+copyBtn.onclick = () => {
+    navigator.clipboard.writeText(codeOutput.value)
+        .then(() => setStatus("Copied.","ok"))
+        .catch(() => setStatus("Copy failed.","err"));
+};
+
+setStatus("Waiting for images…","muted");
+</script>
+</body>
+</html>
