@@ -1,2054 +1,1692 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProcessingJS Mouse Rectangle Converter</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rect → Mouse Converter</title>
 <style>
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(60, 140, 255, 0.18), transparent 35%),
+      radial-gradient(circle at 80% 80%, rgba(120, 70, 255, 0.18), transparent 35%),
+      linear-gradient(135deg, #080d1a, #101a32 50%, #080d1a);
+    color: white;
     overflow: hidden;
-    background: #171717;
-    color: white;
-    font-family: Arial, sans-serif;
-}
+  }
 
-#toolbar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 175px;
-    height: 100%;
-    background: #222;
-    border-right: 1px solid #444;
-    padding: 8px;
-    z-index: 100;
-    overflow-y: auto;
-}
-
-button {
-    width: 100%;
-    background: #333;
-    color: white;
-    border: 1px solid #666;
-    border-radius: 5px;
-    padding: 9px 8px;
-    margin-bottom: 7px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #444;
-}
-
-button.active {
-    background: #1267a5;
-    border-color: #63b8ff;
-}
-
-#sizeSection {
-    border-top: 1px solid #444;
-    margin-top: 5px;
-    padding-top: 10px;
-}
-
-#sizeSection label {
-    display: block;
-    font-size: 12px;
-    color: #aaa;
-    margin-bottom: 3px;
-}
-
-#sizeSection input {
-    width: 100%;
-    height: 30px;
-    margin-bottom: 8px;
-    padding: 4px 7px;
-    border: 1px solid #555;
-    border-radius: 4px;
-    background: #111;
-    color: white;
-}
-
-#editor {
-    position: absolute;
-    left: 175px;
-    top: 0;
-    width: calc(100% - 175px);
-    height: 100%;
-    background: #111;
-    color: #eee;
-    border: 0;
-    outline: 0;
-    resize: none;
-    padding: 15px;
-    font: 14px/1.4 monospace;
-    tab-size: 4;
-    white-space: pre;
-    overflow: auto;
-}
-
-#stage {
-    position: absolute;
-    left: 175px;
-    top: 0;
-    width: calc(100% - 175px);
-    height: 100%;
-    display: none;
-    background: #222;
-    overflow: hidden;
-}
-
-#program {
-    position: absolute;
-    border: 0;
-    background: white;
-    display: block;
-    z-index: 1;
-}
-
-#overlay {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
+  .background {
+    position: fixed;
+    inset: 0;
     pointer-events: none;
-    z-index: 2;
-}
+    overflow: hidden;
+    z-index: 0;
+  }
 
-#info {
+  .circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(2px);
+    opacity: 0.22;
+    animation: float 9s ease-in-out infinite;
+  }
+  .circle:nth-child(1){ width:320px;height:320px;background:#2684ff;top:-120px;left:-100px;animation-duration:10s; }
+  .circle:nth-child(2){ width:260px;height:260px;background:#8b5cf6;right:-80px;bottom:-60px;animation-duration:12s;animation-delay:1.5s; }
+  .circle:nth-child(3){ width:140px;height:140px;background:#22c1ff;right:22%;top:10%;animation-duration:8s;animation-delay:3s; }
+  .circle:nth-child(4){ width:180px;height:180px;background:#4f6cff;left:12%;bottom:15%;animation-duration:11s;animation-delay:0.8s; }
+  .circle:nth-child(5){ width:100px;height:100px;background:#c05cff;left:40%;top:60%;animation-duration:7s;animation-delay:4s; }
+  .circle:nth-child(6){ width:200px;height:200px;background:#2684ff;right:5%;top:40%;animation-duration:13s;animation-delay:2s; }
+  .circle:nth-child(7){ width:130px;height:130px;background:#22c1ff;left:60%;bottom:-40px;animation-duration:9.5s;animation-delay:5s; }
+  .circle:nth-child(8){ width:90px;height:90px;background:#7357ff;left:75%;top:25%;animation-duration:8.5s;animation-delay:1s; }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -40px) scale(1.08); }
+    50% { transform: translate(-20px, -70px) scale(1.15); }
+    75% { transform: translate(20px, -30px) scale(1.05); }
+  }
+
+  .app {
+    height: 100vh;
+    display: flex;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---------- LEFT SIDEBAR ---------- */
+  .sidebar {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px 12px;
+    background: rgba(18, 23, 30, 0.35);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+    overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(42, 52, 65, 0.7);
+    border-radius: 8px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .logo {
+    width: 46px; height: 46px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2684ff, #7357ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(38, 132, 255, 0.4);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .logo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 55%);
+    pointer-events: none;
+  }
+  .logo svg { display: block; position: relative; z-index: 1; }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #aebbd3;
+    min-width: 0;
+  }
+  .brand-text b {
+    font-size: 14px;
+    color: #fff;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #6f7d8c;
+    padding: 4px 4px 0;
+  }
+
+  .sidebar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  button {
+    font: inherit;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #cfe3f5;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
+    width: 100%;
+  }
+  button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(100, 170, 255, 0.5);
+  }
+  button.primary {
+    background: linear-gradient(135deg, #2684ff, #4f6cff);
+    border-color: rgba(100, 170, 255, 0.6);
+    color: #fff;
+    font-weight: 600;
+  }
+  button.primary:hover {
+    background: linear-gradient(135deg, #1e73e8, #3f5cff);
+    box-shadow: 0 6px 20px rgba(38, 132, 255, 0.35);
+  }
+  button.active {
+    background: linear-gradient(135deg, #2684ff, #7357ff);
+    border-color: rgba(150, 200, 255, 0.7);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(38, 132, 255, 0.3);
+  }
+
+  .mode-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .dims-row {
+    display: flex;
+    gap: 6px;
+  }
+  .dims-row label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6f7d8c;
+  }
+  .dims-row input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    color: #cfe3f5;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px 9px;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: normal;
+    text-transform: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .dims-row input:focus {
+    outline: none;
+    border-color: #2684ff;
+    box-shadow: 0 0 0 2px rgba(38, 132, 255, 0.2);
+  }
+
+  /* ---------- MAIN AREA ---------- */
+  .main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .top-row {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .pane-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    font-size: 10.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: #aebbd3;
+    background: rgba(19, 24, 32, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+  }
+
+  #status {
+    margin-left: auto;
+    font-size: 11.5px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #6f7d8c;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70%;
+  }
+  #status.error { color: #ff7b72; }
+  #status.ok { color: #7ee787; }
+
+  .preview-pane { flex: 1 1 auto; }
+
+  .stage-wrap {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    background: rgba(14, 17, 22, 0.08);
+    overflow: hidden;
+  }
+
+  .stage {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    cursor: default;
+    background: radial-gradient(circle at 50% 40%, rgba(30, 45, 65, 0.22) 0%, transparent 70%);
+  }
+
+  .canvas-host {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .canvas-host canvas {
+    display: block;
+    border-radius: 4px;
+    box-shadow: 0 10px 45px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .08);
+  }
+
+  #overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+  }
+
+  #info {
     position: absolute;
     left: 12px;
     top: 12px;
-    background: rgba(0, 0, 0, 0.82);
-    padding: 8px 10px;
-    border-radius: 5px;
-    font: 13px monospace;
+    background: rgba(8, 13, 26, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #e6edf3;
+    padding: 9px 13px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font: 12.5px ui-monospace, Menlo, Consolas, monospace;
     display: none;
     z-index: 20;
     pointer-events: none;
-}
+  }
 
-#outputs {
+  .viewport-hint {
     position: absolute;
-    right: 10px;
-    top: 10px;
-    width: 300px;
-    max-height: calc(100% - 20px);
-    overflow-y: auto;
-    display: none;
+    bottom: 10px;
+    left: 12px;
+    font-size: 11px;
+    color: #66748d;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+    z-index: 15;
+    background: rgba(8, 13, 26, 0.55);
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* ---------- OUTPUTS SIDEBAR ---------- */
+  .outputs-pane {
+    flex: 0 0 340px;
+  }
+
+  .outputs-list {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    gap: 8px;
-    z-index: 30;
-}
-
-.outputBox {
-    background: rgba(16, 16, 16, 0.96);
-    border: 1px solid #555;
-    border-radius: 5px;
+    min-height: 0;
+    gap: 10px;
+    padding: 10px;
     overflow: hidden;
-}
+  }
 
-.outputTitle {
-    background: #292929;
-    border-bottom: 1px solid #444;
-    padding: 7px 9px;
-    font: bold 12px Arial, sans-serif;
-}
+  .outputBox {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: rgba(16, 20, 28, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .outputBox:hover {
+    border-color: rgba(100, 170, 255, 0.3);
+  }
 
-.outputText {
+  .outputTitle {
+    background: rgba(41, 48, 60, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 7px 10px 7px 12px;
+    font: bold 11px Arial, sans-serif;
+    color: #aebbd3;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .outputTitle .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .outputTitle .dot.unchanged { background: #00aaff; box-shadow: 0 0 8px rgba(0,170,255,0.6); }
+  .outputTitle .dot.changed   { background: #ffb000; box-shadow: 0 0 8px rgba(255,176,0,0.6); }
+  .outputTitle .dot.new       { background: #48e080; box-shadow: 0 0 8px rgba(72,224,128,0.6); }
+
+  .outputTitle .copy-btn {
+    margin-left: auto;
+    width: auto;
+    padding: 4px 10px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cfe3f5;
+    text-transform: uppercase;
+    font-weight: 600;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .outputTitle .copy-btn:hover {
+    background: rgba(38, 132, 255, 0.4);
+    border-color: rgba(100, 170, 255, 0.5);
+  }
+  .outputTitle .copy-btn.copied {
+    background: rgba(72, 224, 128, 0.3);
+    border-color: rgba(72, 224, 128, 0.6);
+    color: #cfffd8;
+  }
+
+  .outputText {
+    flex: 1;
     display: block;
     width: 100%;
-    min-height: 70px;
-    max-height: 240px;
-    resize: vertical;
+    min-height: 0;
+    resize: none;
     border: 0;
     outline: 0;
-    padding: 9px;
-    background: #101010;
+    padding: 10px 12px;
+    background: transparent;
     color: #b7ffb7;
-    font: 12px/1.4 monospace;
-}
+    font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
+    overflow: auto;
+    white-space: pre;
+  }
+  .outputText::-webkit-scrollbar { width: 10px; height: 10px; }
+  .outputText::-webkit-scrollbar-thumb {
+    background: rgba(42, 52, 65, 0.8);
+    border-radius: 8px;
+    border: 2px solid rgba(16, 20, 28, 0.5);
+  }
 
-#contextMenu {
+  /* ---------- EDITOR PANE (BOTTOM) ---------- */
+  .editor-pane {
+    flex: 0 0 auto;
+    height: 0;
+    overflow: hidden;
+    transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .editor-pane.open { height: 42vh; }
+
+  .editor {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+    background: rgba(15, 20, 27, 0.25);
+    position: relative;
+  }
+
+  .gutter {
+    flex: 0 0 auto;
+    position: relative;
+    padding: 16px 10px 16px 14px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 22px;
+    color: #46525f;
+    background: rgba(13, 17, 23, 0.3);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    user-select: none;
+    min-width: 3.4em;
+    overflow: hidden;
+  }
+
+  .gutter-inner {
+    position: absolute;
+    top: 16px;
+    right: 10px;
+    text-align: right;
+    white-space: pre;
+  }
+
+  .code-area {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #code {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: 0;
+    padding: 16px 18px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 22px;
+    tab-size: 2;
+    -moz-tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+    overflow-wrap: normal;
+    word-break: normal;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: #e6edf3;
+    caret-color: #7fd1ff;
+    letter-spacing: 0;
+    font-variant-ligatures: none;
+  }
+  #code::selection { background: rgba(79, 195, 247, .35); }
+  #code::-webkit-scrollbar { width: 12px; height: 12px; }
+  #code::-webkit-scrollbar-thumb {
+    background: rgba(42, 52, 65, 0.8);
+    border-radius: 8px;
+    border: 3px solid rgba(15, 20, 27, 0.5);
+  }
+
+  .tok-com { color: #63798c; font-style: italic; }
+  .tok-str { color: #a5d6a7; }
+  .tok-num { color: #f7a06c; }
+  .tok-kw  { color: #c792ea; }
+  .tok-bi  { color: #82aaff; }
+
+  /* ---------- CONTEXT MENU ---------- */
+  #contextMenu {
     position: fixed;
-    width: 145px;
+    width: 158px;
     display: none;
-    background: #292929;
-    border: 1px solid #555;
-    border-radius: 5px;
-    padding: 4px;
+    background: rgba(30, 35, 45, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 6px;
     z-index: 1000;
-    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.5);
-}
-
-#contextMenu button {
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+  #contextMenu button {
     margin: 0;
     border: 0;
-    border-radius: 3px;
+    border-radius: 8px;
     background: transparent;
     text-align: left;
-    padding: 8px;
-}
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #e6edf3;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #contextMenu button:hover { background: rgba(38, 132, 255, 0.5); }
+  #contextMenu .delete:hover { background: rgba(165, 42, 42, 0.7); }
 
-#contextMenu button:hover {
-    background: #1267a5;
-}
+  @media (max-width: 900px) {
+    .sidebar { flex: 0 0 180px; }
+    .outputs-pane { flex: 0 0 260px; }
+    .brand-text { display: none; }
+    .editor-pane.open { height: 48vh; }
+  }
 
-#contextMenu .delete:hover {
-    background: #a52a2a;
-}
-
-#status {
-    color: #777;
-    font: 10px monospace;
-    margin-top: 5px;
-    word-break: break-word;
-}
+  @media (max-width: 720px) {
+    .sidebar { flex: 0 0 60px; padding: 10px 6px; }
+    .brand-text, .section-label { display: none; }
+    button { padding: 10px 8px; font-size: 11px; }
+    .outputs-pane { display: none; }
+    .editor-pane.open { height: 55vh; }
+  }
 </style>
 </head>
-
 <body>
 
-<div id="toolbar">
-    <button id="runButton">Run</button>
-    <button id="editButton">Edit Code</button>
-    <button id="normalButton" class="active">Normal Mode</button>
-    <button id="rectButton">Rect Mode</button>
-    <button id="editRectButton">Edit Rects</button>
-    <button id="printButton">Print / Copy</button>
-    <button id="clearButton">Clear</button>
-
-    <div id="sizeSection">
-        <label for="widthInput">Canvas Width</label>
-        <input id="widthInput" type="number" min="1" value="400">
-
-        <label for="heightInput">Canvas Height</label>
-        <input id="heightInput" type="number" min="1" value="400">
-    </div>
-
-    <div id="status"></div>
+<div class="background">
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
 </div>
 
-<textarea id="editor" spellcheck="false">size(400, 400);
-background(220);
-
-fill(255, 0, 0);
-rect(20, 120, 340, 45);
-
-fill(0, 0, 255);
-rect(20, 170, 340, 45);
-
-function mousePressed() {
-    if (mouseX >= 20 && mouseX <= 360 && mouseY >= 120 && mouseY <= 165) {
-        println("First button");
-    }
-
-    if (mouseX >= 20 && mouseX <= 360 && mouseY >= 170 && mouseY <= 215) {
-        println("Second button");
-    }
-}</textarea>
-
-<div id="stage">
-    <iframe id="program" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-    <canvas id="overlay"></canvas>
-    <div id="info"></div>
-
-    <div id="outputs">
-        <div id="originalBox" class="outputBox">
-            <div class="outputTitle">Originally</div>
-            <textarea id="originalOutput" class="outputText" readonly></textarea>
-        </div>
-
-        <div id="updatedBox" class="outputBox">
-            <div class="outputTitle">Updated</div>
-            <textarea id="updatedOutput" class="outputText" readonly></textarea>
-        </div>
-
-        <div id="newBox" class="outputBox">
-            <div class="outputTitle">New</div>
-            <textarea id="newOutput" class="outputText" readonly></textarea>
-        </div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 40 40" width="28" height="28" fill="none">
+          <rect x="3" y="8" width="20" height="14" rx="3"
+                stroke="white" stroke-width="2.5"/>
+          <circle cx="30" cy="13" r="3.2" fill="white"/>
+          <path d="M19 22 L19 34 L22.2 30.8 L25 36 L27.8 34.6 L25 29.4 L29.5 29.4 Z"
+                fill="white" stroke="white" stroke-width="1" stroke-linejoin="round"/>
+          <line x1="23" y1="8" x2="27" y2="12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <b>Rect → Mouse</b>
+        <span>Khan Academy Tools</span>
+      </div>
     </div>
+
+    <div class="section-label">View</div>
+    <div class="sidebar-group">
+      <button id="editorToggle">⌨ Code</button>
+      <button id="clearButton">Clear Rects</button>
+    </div>
+
+    <div class="section-label">Mode</div>
+    <div class="mode-group">
+      <button id="normalButton" class="active">Normal</button>
+      <button id="rectButton">Rect</button>
+      <button id="editRectButton">Edit</button>
+    </div>
+
+    <div class="section-label">Canvas</div>
+    <div class="dims-row">
+      <label>W<input type="number" id="widthInput" min="1" max="2000" value="400"></label>
+      <label>H<input type="number" id="heightInput" min="1" max="2000" value="400"></label>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <div class="top-row">
+      <section class="pane preview-pane">
+        <div class="pane-head">Preview <span id="status"></span></div>
+        <div class="stage-wrap">
+          <div class="stage" id="stage">
+            <div class="canvas-host" id="canvasHost">
+              <canvas id="overlay"></canvas>
+              <div id="info"></div>
+            </div>
+          </div>
+          <div class="viewport-hint">scroll = zoom · middle-drag = pan</div>
+        </div>
+      </section>
+
+      <aside class="pane outputs-pane">
+        <div class="pane-head">Outputs</div>
+        <div class="outputs-list">
+          <div class="outputBox">
+            <div class="outputTitle">
+              <span class="dot unchanged"></span>Unchanged
+              <button class="copy-btn" data-target="originalOutput">Copy</button>
+            </div>
+            <textarea id="originalOutput" class="outputText" readonly></textarea>
+          </div>
+          <div class="outputBox">
+            <div class="outputTitle">
+              <span class="dot changed"></span>Changed
+              <button class="copy-btn" data-target="updatedOutput">Copy</button>
+            </div>
+            <textarea id="updatedOutput" class="outputText" readonly></textarea>
+          </div>
+          <div class="outputBox">
+            <div class="outputTitle">
+              <span class="dot new"></span>New
+              <button class="copy-btn" data-target="newOutput">Copy</button>
+            </div>
+            <textarea id="newOutput" class="outputText" readonly></textarea>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="pane editor-pane" id="editorPane">
+      <div class="pane-head">Code — Processing.js (ES5)</div>
+      <div class="editor">
+        <div class="gutter" id="gutter"><div class="gutter-inner" id="gutterInner"></div></div>
+        <div class="code-area" id="codeArea">
+          <pre id="code" contenteditable="true" spellcheck="false"
+               autocomplete="off" autocorrect="off" autocapitalize="off"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <div id="contextMenu">
-    <button id="duplicateButton">Duplicate</button>
-    <button id="cutButton">Cut</button>
-    <button id="copyButton">Copy</button>
-    <button id="pasteButton">Paste</button>
-    <button id="deleteButton" class="delete">Delete</button>
+  <button id="duplicateButton">Duplicate</button>
+  <button id="cutButton">Cut</button>
+  <button id="copyButton">Copy</button>
+  <button id="pasteButton">Paste</button>
+  <button id="deleteButton" class="delete">Delete</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script>
 <script>
-const editor = document.getElementById("editor");
-const stage = document.getElementById("stage");
-const program = document.getElementById("program");
-const overlay = document.getElementById("overlay");
-const ctx = overlay.getContext("2d");
+(function () {
+  'use strict';
 
-const info = document.getElementById("info");
-const outputs = document.getElementById("outputs");
+  var codeEl      = document.getElementById('code');
+  var gutterInner = document.getElementById('gutterInner');
+  var stageEl     = document.getElementById('stage');
+  var canvasHost  = document.getElementById('canvasHost');
+  var overlay     = document.getElementById('overlay');
+  var ctx         = overlay.getContext('2d');
+  var infoEl      = document.getElementById('info');
+  var statusEl    = document.getElementById('status');
+  var widthInput  = document.getElementById('widthInput');
+  var heightInput = document.getElementById('heightInput');
+  var editorPane  = document.getElementById('editorPane');
 
-const originalBox = document.getElementById("originalBox");
-const updatedBox = document.getElementById("updatedBox");
-const newBox = document.getElementById("newBox");
+  var editorToggle   = document.getElementById('editorToggle');
+  var normalButton   = document.getElementById('normalButton');
+  var rectButton     = document.getElementById('rectButton');
+  var editRectButton = document.getElementById('editRectButton');
+  var clearButton    = document.getElementById('clearButton');
 
-const originalOutput = document.getElementById("originalOutput");
-const updatedOutput = document.getElementById("updatedOutput");
-const newOutput = document.getElementById("newOutput");
+  var originalOutput  = document.getElementById('originalOutput');
+  var updatedOutput   = document.getElementById('updatedOutput');
+  var newOutput       = document.getElementById('newOutput');
 
-const runButton = document.getElementById("runButton");
-const editButton = document.getElementById("editButton");
-const normalButton = document.getElementById("normalButton");
-const rectButton = document.getElementById("rectButton");
-const editRectButton = document.getElementById("editRectButton");
-const printButton = document.getElementById("printButton");
-const clearButton = document.getElementById("clearButton");
+  var contextMenu     = document.getElementById('contextMenu');
+  var duplicateButton = document.getElementById('duplicateButton');
+  var cutButton       = document.getElementById('cutButton');
+  var copyButton      = document.getElementById('copyButton');
+  var pasteButton     = document.getElementById('pasteButton');
+  var deleteButton    = document.getElementById('deleteButton');
 
-const widthInput = document.getElementById("widthInput");
-const heightInput = document.getElementById("heightInput");
-const status = document.getElementById("status");
+  var LINE_HEIGHT = 22;
 
-const contextMenu = document.getElementById("contextMenu");
-const duplicateButton = document.getElementById("duplicateButton");
-const cutButton = document.getElementById("cutButton");
-const copyButton = document.getElementById("copyButton");
-const pasteButton = document.getElementById("pasteButton");
-const deleteButton = document.getElementById("deleteButton");
+  var canvasWidth  = 400;
+  var canvasHeight = 400;
 
-let mode = "normal";
-let rectangles = [];
-let selectedRectangle = null;
-let clipboardRectangle = null;
+  var mode = 'normal';
+  var rectangles = [];
+  var selectedRectangle = null;
+  var clipboardRectangle = null;
 
-let drawing = false;
-let dragging = false;
-let resizing = false;
+  var drawing = false;
+  var dragging = false;
+  var resizing = false;
 
-let startX = 0;
-let startY = 0;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
+  var startX = 0, startY = 0;
+  var dragOffsetX = 0, dragOffsetY = 0;
+  var resizeStartX = 0, resizeStartY = 0;
+  var resizeOriginal = null;
 
-let resizeStartX = 0;
-let resizeStartY = 0;
-let resizeOriginal = null;
+  var tempRectangle = null;
+  var drawPending = false;
 
-let canvasWidth = 400;
-let canvasHeight = 400;
+  var instance = null;
 
-let tempRectangle = null;
-let drawPending = false;
+  var viewportZoom = 1;
+  var viewportPanX = 0;
+  var viewportPanY = 0;
+  var viewportInitialized = false;
 
-function requestDraw() {
-    if (drawPending) {
-        return;
-    }
+  var isPanning = false;
+  var panStartClientX = 0, panStartClientY = 0;
+  var panStartPanX = 0, panStartPanY = 0;
 
-    drawPending = true;
+  var sourceSnapshots = {};
 
-    requestAnimationFrame(function() {
-        drawPending = false;
-        drawRectangles();
+  var DEFAULT_CODE = [
+    'background(220);',
+    '',
+    'fill(255, 0, 0);',
+    'rect(20, 120, 340, 45);',
+    '',
+    'fill(0, 0, 255);',
+    'rect(20, 170, 340, 45);',
+    '',
+    'function mousePressed() {',
+    '  if (mouseX >= 20 && mouseX <= 360 && mouseY >= 120 && mouseY <= 165) {',
+    '    println("First button");',
+    '  }',
+    '',
+    '  if (mouseX >= 20 && mouseX <= 360 && mouseY >= 170 && mouseY <= 215) {',
+    '    println("Second button");',
+    '  }',
+    '}'
+  ].join('\n');
+
+  var KEYWORDS = new Set(('var let const function return if else for while do break continue ' +
+    'new this with true false null undefined typeof instanceof in of try catch finally throw ' +
+    'switch case default delete void class extends super yield debugger').split(' '));
+
+  var BUILTINS = new Set((
+    'size frameRate background fill noFill stroke noStroke strokeWeight strokeCap strokeJoin ' +
+    'ellipse rect arc line point triangle quad beginShape endShape vertex curveVertex bezierVertex ' +
+    'curve bezier text textSize textAlign textWidth textLeading textFont textAscent textDescent ' +
+    'textMode createFont loadFont image loadImage imageMode tint noTint requestImage createImage ' +
+    'noLoop loop redraw draw setup mouseX mouseY pmouseX pmouseY mousePressed mouseReleased ' +
+    'mouseClicked mouseMoved mouseDragged mouseOver mouseOut mouseButton keyPressed keyReleased ' +
+    'keyTyped key keyCode keyIsPressed PI TWO_PI HALF_PI QUARTER_PI TAU width height ' +
+    'displayWidth displayHeight random randomSeed noise noiseDetail noiseSeed map constrain dist ' +
+    'abs ceil floor round min max pow sqrt exp log sin cos tan asin acos atan atan2 radians ' +
+    'degrees pushMatrix popMatrix translate rotate rotateX rotateY rotateZ scale pushStyle ' +
+    'popStyle color colorMode lerpColor hue saturation brightness red green blue alpha blendColor ' +
+    'noSmooth smooth save loadPixels updatePixels get set createCanvas cursor noCursor frameCount ' +
+    'millis second minute hour day month year print println rectMode ellipseMode angleMode exit ' +
+    'focus blur sq norm lerp mag bezierPoint bezierTangent curvePoint curveTangent screenX screenY ' +
+    'CENTER CORNER CORNERS RADIUS LEFT RIGHT TOP BOTTOM BASELINE RGB HSB HSL CLOSE OPEN ROUND ' +
+    'SQUARE PROJECT MITER BEVEL PIE CHORD CLICK RELEASE PRESS ENTER RETURN TAB BACKSPACE DELETE ' +
+    'ESC UP DOWN ALT CONTROL SHIFT ADD SUBTRACT DIFFERENCE EXCLUSION MULTIPLY SCREEN REPLACE ' +
+    'OVERLAY DARKEST LIGHTEST DODGE BURN HARDLIGHT SOFTLIGHT').trim().split(/\s+/));
+
+  var TOKEN_RE = new RegExp(
+    '(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)' +
+    '|("(?:\\\\.|[^"\\\\\\n])*"|\'(?:\\\\.|[^\'\\\\\\n])*\'|`(?:\\\\.|[^`\\\\])*`)' +
+    '|(0[xX][0-9a-fA-F]+|\\d*\\.?\\d+(?:[eE][+-]?\\d+)?)' +
+    '|([A-Za-z_$][A-Za-z0-9_$]*)', 'g');
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function highlight(src) {
+    return escapeHtml(src).replace(TOKEN_RE, function (m, comment, str, num, ident) {
+      if (comment) return '<span class="tok-com">' + comment + '</span>';
+      if (str)     return '<span class="tok-str">' + str + '</span>';
+      if (num)     return '<span class="tok-num">' + num + '</span>';
+      if (ident) {
+        if (KEYWORDS.has(ident)) return '<span class="tok-kw">' + ident + '</span>';
+        if (BUILTINS.has(ident)) return '<span class="tok-bi">' + ident + '</span>';
+        return ident;
+      }
+      return m;
     });
-}
+  }
 
-function setStatus(text) {
-    status.textContent = text;
-}
+  function getText() {
+    return codeEl.innerText.replace(/\u00a0/g, ' ');
+  }
 
-function getCanvasSize() {
-    let width = Number(widthInput.value);
-    let height = Number(heightInput.value);
+  function setText(str) {
+    codeEl.textContent = str;
+    applyHighlight();
+    renderGutter();
+  }
 
-    if (!Number.isFinite(width) || width < 1) {
-        width = 400;
+  function applyHighlight() {
+    var text = getText();
+    var sel = window.getSelection();
+    var caretOffset = null;
+    if (sel && sel.rangeCount && codeEl.contains(sel.anchorNode)) {
+      var range = sel.getRangeAt(0).cloneRange();
+      range.selectNodeContents(codeEl);
+      range.setEnd(sel.anchorNode, sel.anchorOffset);
+      caretOffset = range.toString().length;
     }
 
-    if (!Number.isFinite(height) || height < 1) {
-        height = 400;
-    }
+    codeEl.innerHTML = highlight(text) + '<br>';
 
+    if (caretOffset !== null && document.activeElement === codeEl) {
+      var walker = document.createTreeWalker(codeEl, NodeFilter.SHOW_TEXT, null, false);
+      var node, count = 0, placed = false;
+      while ((node = walker.nextNode())) {
+        var len = node.nodeValue.length;
+        if (count + len >= caretOffset) {
+          var r = document.createRange();
+          r.setStart(node, caretOffset - count);
+          r.collapse(true);
+          var s = window.getSelection();
+          s.removeAllRanges();
+          s.addRange(r);
+          placed = true;
+          break;
+        }
+        count += len;
+      }
+      if (!placed) {
+        var r2 = document.createRange();
+        r2.selectNodeContents(codeEl);
+        r2.collapse(false);
+        var s2 = window.getSelection();
+        s2.removeAllRanges();
+        s2.addRange(r2);
+      }
+    }
+  }
+
+  function totalLines() {
+    var v = getText();
+    var n = 1;
+    for (var i = 0; i < v.length; i++) if (v.charCodeAt(i) === 10) n++;
+    return n;
+  }
+
+  function renderGutter() {
+    var total = totalLines();
+    var firstLine = Math.max(1, Math.floor(codeEl.scrollTop / LINE_HEIGHT) + 1);
+    var start = Math.max(1, firstLine - 2);
+    var visibleRows = Math.ceil(codeEl.clientHeight / LINE_HEIGHT) + 4;
+    var end = Math.min(total, firstLine + visibleRows);
+    var out = '';
+    for (var i = start; i <= end; i++) out += i + '\n';
+    gutterInner.textContent = out;
+    var offset = -(codeEl.scrollTop - (start - 1) * LINE_HEIGHT);
+    gutterInner.style.transform = 'translateY(' + offset + 'px)';
+  }
+
+  codeEl.addEventListener('scroll', renderGutter, { passive: true });
+  window.addEventListener('resize', renderGutter);
+
+  var hlTimer = null;
+  codeEl.addEventListener('input', function () {
+    clearTimeout(hlTimer);
+    hlTimer = setTimeout(function () {
+      applyHighlight();
+      renderGutter();
+      scheduleRun();
+    }, 80);
+  });
+
+  codeEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      document.execCommand('insertText', false, '  ');
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(runTimer);
+      runProgram();
+    }
+  });
+
+  codeEl.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  function prepareSketch(src) {
+    var handlers = ['setup','draw','mouseClicked','mouseMoved','mouseDragged',
+                    'mousePressed','mouseReleased','mouseOver','mouseOut',
+                    'keyPressed','keyReleased','keyTyped'];
+    var re = new RegExp('\\bfunction\\s+(' + handlers.join('|') + ')\\s*\\(', 'g');
+    return src.replace(re, '$1 = function(');
+  }
+
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg || '';
+    statusEl.className = kind || '';
+  }
+
+  function teardown() {
+    if (instance) {
+      try { if (typeof instance.exit === 'function') instance.exit(); } catch (e) {}
+      instance = null;
+    }
+    var old = canvasHost.querySelector('canvas#mycanvas');
+    if (old) old.parentNode.removeChild(old);
+  }
+
+  function requestDraw() {
+    if (drawPending) return;
+    drawPending = true;
+    requestAnimationFrame(function () {
+      drawPending = false;
+      drawRectangles();
+      updateOutputs();
+    });
+  }
+
+  function applyViewport() {
+    canvasHost.style.transform =
+      'translate(' + viewportPanX + 'px, ' + viewportPanY + 'px) scale(' + viewportZoom + ')';
+  }
+
+  function centerViewport() {
+    var sRect = stageEl.getBoundingClientRect();
+    viewportPanX = (sRect.width - canvasWidth * viewportZoom) / 2;
+    viewportPanY = (sRect.height - canvasHeight * viewportZoom) / 2;
+    applyViewport();
+  }
+
+  function zoomAt(clientX, clientY, factor) {
+    var sRect = stageEl.getBoundingClientRect();
+    var cx = clientX - sRect.left;
+    var cy = clientY - sRect.top;
+
+    var lx = (cx - viewportPanX) / viewportZoom;
+    var ly = (cy - viewportPanY) / viewportZoom;
+
+    var newZoom = Math.max(0.15, Math.min(6, viewportZoom * factor));
+
+    viewportPanX = cx - lx * newZoom;
+    viewportPanY = cy - ly * newZoom;
+    viewportZoom = newZoom;
+    applyViewport();
+  }
+
+  function processingToScreen(r) {
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  }
+
+  function getPointer(event) {
+    var hRect = canvasHost.getBoundingClientRect();
     return {
-        width: Math.round(width),
-        height: Math.round(height)
+      x: (event.clientX - hRect.left) / viewportZoom,
+      y: (event.clientY - hRect.top) / viewportZoom
     };
-}
-
-function hasSizeCall(code) {
-    return /\bsize\s*\(/.test(code);
-}
-
-function isFullHTML(code) {
-    const beginning = code.slice(0, 4000);
-
-    return (
-        /<!doctype\s+html/i.test(beginning) ||
-        /<html(?:\s|>)/i.test(beginning) ||
-        /<body(?:\s|>)/i.test(beginning)
-    );
-}
-
-function escapeScriptEnd(code) {
-    return code.replace(/<\/script/gi, "<\\/script");
-}
-
-function createProcessingHTML(source) {
-    const sizeCode = hasSizeCall(source) ?
-        "" :
-        "size(" + canvasWidth + ", " + canvasHeight + ");";
-
-    const safeSource = escapeScriptEnd(source);
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-html,body {
-    margin:0;
-    padding:0;
-    overflow:hidden;
-}
-canvas {
-    display:block;
-}
-</style>
-</head>
-<body>
-<canvas id="mycanvas" width="${canvasWidth}" height="${canvasHeight}"></canvas>
-<script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"><\/script>
-<script>
-var programCode = function(processingInstance) {
-    with (processingInstance) {
-        ${sizeCode}
-        ${safeSource}
-    }
-};
-
-var canvas = document.getElementById("mycanvas");
-var processingInstance = new Processing(canvas, programCode);
-<\/script>
-</body>
-</html>`;
-}
-
-function prepareFullHTML(source) {
-    if (hasSizeCall(source)) {
-        return escapeScriptEnd(source);
-    }
-
-    let result = escapeScriptEnd(source);
-
-    const canvasRegex = /<canvas\b([^>]*)>/i;
-    const match = result.match(canvasRegex);
-
-    if (match) {
-        let attributes = match[1];
-
-        attributes = attributes
-            .replace(/\swidth\s*=\s*["'][^"']*["']/gi, "")
-            .replace(/\sheight\s*=\s*["'][^"']*["']/gi, "");
-
-        const canvas =
-            "<canvas" +
-            attributes +
-            ' width="' + canvasWidth + '"' +
-            ' height="' + canvasHeight + '">';
-
-        result = result.replace(
-            canvasRegex,
-            canvas
-        );
-
-        return result;
-    }
-
-    return result;
-}
-
-function getProgramHTML() {
-    const source = editor.value;
-
-    if (isFullHTML(source)) {
-        return prepareFullHTML(source);
-    }
-
-    return createProcessingHTML(source);
-}
-
-function findMatchingBrace(text, openIndex) {
-    let depth = 0;
-    let quote = "";
-    let escaped = false;
-    let lineComment = false;
-    let blockComment = false;
-
-    for (let i = openIndex; i < text.length; i++) {
-        const c = text[i];
-        const n = text[i + 1];
-
-        if (lineComment) {
-            if (c === "\n") {
-                lineComment = false;
-            }
-            continue;
-        }
-
-        if (blockComment) {
-            if (c === "*" && n === "/") {
-                blockComment = false;
-                i++;
-            }
-            continue;
-        }
-
-        if (quote) {
-            if (escaped) {
-                escaped = false;
-            } else if (c === "\\") {
-                escaped = true;
-            } else if (c === quote) {
-                quote = "";
-            }
-            continue;
-        }
-
-        if (c === "/" && n === "/") {
-            lineComment = true;
-            i++;
-            continue;
-        }
-
-        if (c === "/" && n === "*") {
-            blockComment = true;
-            i++;
-            continue;
-        }
-
-        if (
-            c === "\"" ||
-            c === "'" ||
-            c === "`"
-        ) {
-            quote = c;
-            continue;
-        }
-
-        if (c === "{") {
-            depth++;
-        } else if (c === "}") {
-            depth--;
-
-            if (depth === 0) {
-                return i;
-            }
-        }
-    }
-
-    return -1;
-}
-
-function getMouseFunctionBodies(source) {
-    const bodies = [];
-
-    const pattern =
-        /(?:function\s+)?(mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*(?:=\s*function)?\s*\([^)]*\)\s*\{/g;
-
-    let match;
-
-    while ((match = pattern.exec(source)) !== null) {
-        const openBrace =
-            source.indexOf(
-                "{",
-                match.index
-            );
-
-        if (openBrace < 0) {
-            continue;
-        }
-
-        const closeBrace =
-            findMatchingBrace(
-                source,
-                openBrace
-            );
-
-        if (closeBrace < 0) {
-            continue;
-        }
-
-        bodies.push(
-            source.slice(
-                openBrace + 1,
-                closeBrace
-            )
-        );
-
-        pattern.lastIndex =
-            closeBrace + 1;
-    }
-
-    return bodies;
-}
-
-function extractProcessingScript(source) {
-    if (!isFullHTML(source)) {
-        return source;
-    }
-
-    const result = [];
-    const pattern =
-        /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
-
-    let match;
-
-    while ((match = pattern.exec(source)) !== null) {
-        if (
-            /\bmousePressed\b/.test(match[1]) ||
-            /\bmouseClicked\b/.test(match[1]) ||
-            /\bmouseReleased\b/.test(match[1]) ||
-            /\bmouseDragged\b/.test(match[1]) ||
-            /\bmouseMoved\b/.test(match[1])
-        ) {
-            result.push(match[1]);
-        }
-    }
-
-    return result.join("\n");
-}
-
-function parseMouseRectangles(source) {
-    const bodies =
-        getMouseFunctionBodies(
-            extractProcessingScript(source)
-        );
-
-    const result = [];
-
-    for (const body of bodies) {
-        const ifPattern =
-            /\bif\s*\(([^{}]*)\)/g;
-
-        let match;
-
-        while (
-            (match =
-                ifPattern.exec(body)) !== null
-        ) {
-            const condition = match[1];
-
-            if (
-                !/\bmouseX\b/.test(condition) ||
-                !/\bmouseY\b/.test(condition)
-            ) {
-                continue;
-            }
-
-            const xValues = [];
-            const yValues = [];
-
-            const xPattern =
-                /mouseX\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
-
-            const yPattern =
-                /mouseY\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
-
-            let xMatch;
-            let yMatch;
-
-            while (
-                (xMatch =
-                    xPattern.exec(condition)) !== null
-            ) {
-                xValues.push({
-                    operator: xMatch[1],
-                    value: Number(xMatch[2])
-                });
-            }
-
-            while (
-                (yMatch =
-                    yPattern.exec(condition)) !== null
-            ) {
-                yValues.push({
-                    operator: yMatch[1],
-                    value: Number(yMatch[2])
-                });
-            }
-
-            if (
-                xValues.length < 2 ||
-                yValues.length < 2
-            ) {
-                continue;
-            }
-
-            let minX = -Infinity;
-            let maxX = Infinity;
-            let minY = -Infinity;
-            let maxY = Infinity;
-
-            for (const item of xValues) {
-                if (
-                    item.operator === ">=" ||
-                    item.operator === ">"
-                ) {
-                    minX =
-                        Math.max(
-                            minX,
-                            item.value
-                        );
-                } else {
-                    maxX =
-                        Math.min(
-                            maxX,
-                            item.value
-                        );
-                }
-            }
-
-            for (const item of yValues) {
-                if (
-                    item.operator === ">=" ||
-                    item.operator === ">"
-                ) {
-                    minY =
-                        Math.max(
-                            minY,
-                            item.value
-                        );
-                } else {
-                    maxY =
-                        Math.min(
-                            maxY,
-                            item.value
-                        );
-                }
-            }
-
-            if (
-                !Number.isFinite(minX) ||
-                !Number.isFinite(maxX) ||
-                !Number.isFinite(minY) ||
-                !Number.isFinite(maxY)
-            ) {
-                continue;
-            }
-
-            if (
-                maxX <= minX ||
-                maxY <= minY
-            ) {
-                continue;
-            }
-
-            result.push({
-                x: minX,
-                y: minY,
-                width: maxX - minX,
-                height: maxY - minY,
-                originalX: minX,
-                originalY: minY,
-                originalWidth: maxX - minX,
-                originalHeight: maxY - minY,
-                original: true
-            });
-        }
-    }
-
-    return result;
-}
-
-function getCanvasInformation() {
-    try {
-        const iframeRect =
-            program.getBoundingClientRect();
-
-        const canvas =
-            program.contentDocument.querySelector(
-                "canvas"
-            );
-
-        if (!canvas) {
-            return null;
-        }
-
-        const canvasRect =
-            canvas.getBoundingClientRect();
-
-        const stageRect =
-            stage.getBoundingClientRect();
-
-        return {
-            x: iframeRect.left +
-                canvasRect.left -
-                stageRect.left,
-
-            y: iframeRect.top +
-                canvasRect.top -
-                stageRect.top,
-
-            width: canvasRect.width,
-            height: canvasRect.height
-        };
-    } catch {
-        return null;
-    }
-}
-
-function processingToScreen(r) {
-    const canvas =
-        getCanvasInformation();
-
-    if (
-        !canvas ||
-        canvas.width <= 0 ||
-        canvas.height <= 0
-    ) {
-        return {
-            x: r.x,
-            y: r.y,
-            width: r.width,
-            height: r.height
-        };
-    }
-
-    return {
-        x: canvas.x +
-            r.x *
-            canvas.width /
-            canvasWidth,
-
-        y: canvas.y +
-            r.y *
-            canvas.height /
-            canvasHeight,
-
-        width: r.width *
-            canvas.width /
-            canvasWidth,
-
-        height: r.height *
-            canvas.height /
-            canvasHeight
-    };
-}
-
-function screenToProcessing(r) {
-    const canvas =
-        getCanvasInformation();
-
-    if (
-        !canvas ||
-        canvas.width <= 0 ||
-        canvas.height <= 0
-    ) {
-        return {
-            x: r.x,
-            y: r.y,
-            width: r.width,
-            height: r.height
-        };
-    }
-
-    return {
-        x: (r.x - canvas.x) *
-            canvasWidth /
-            canvas.width,
-
-        y: (r.y - canvas.y) *
-            canvasHeight /
-            canvas.height,
-
-        width: r.width *
-            canvasWidth /
-            canvas.width,
-
-        height: r.height *
-            canvasHeight /
-            canvas.height
-    };
-}
-
-function drawResizeHandles(r) {
-    const s = 8;
-
-    ctx.fillStyle = "#ffb000";
-
-    ctx.fillRect(
-        r.x - s / 2,
-        r.y - s / 2,
-        s,
-        s
-    );
-
-    ctx.fillRect(
-        r.x + r.width - s / 2,
-        r.y - s / 2,
-        s,
-        s
-    );
-
-    ctx.fillRect(
-        r.x - s / 2,
-        r.y + r.height - s / 2,
-        s,
-        s
-    );
-
-    ctx.fillRect(
-        r.x + r.width - s / 2,
-        r.y + r.height - s / 2,
-        s,
-        s
-    );
-}
-
-function drawRectangles() {
-    ctx.clearRect(
-        0,
-        0,
-        overlay.width,
-        overlay.height
-    );
-
-    for (const rectangle of rectangles) {
-        const r =
-            processingToScreen(
-                rectangle
-            );
-
-        const selected =
-            selectedRectangle === rectangle;
-
-        if (selected) {
-            ctx.fillStyle =
-                "rgba(255,170,0,0.22)";
-            ctx.strokeStyle = "#ffb000";
-        } else if (rectangle.original) {
-            ctx.fillStyle =
-                "rgba(0,140,255,0.22)";
-            ctx.strokeStyle = "#00aaff";
-        } else {
-            ctx.fillStyle =
-                "rgba(70,220,120,0.22)";
-            ctx.strokeStyle = "#48e080";
-        }
-
-        ctx.fillRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        ctx.lineWidth =
-            selected ? 3 : 2;
-
-        ctx.strokeRect(
-            r.x,
-            r.y,
-            r.width,
-            r.height
-        );
-
-        if (
-            selected &&
-            mode === "edit"
-        ) {
-            drawResizeHandles(r);
-        }
+  }
+
+  function drawResizeHandles(r) {
+    var s = 8;
+    ctx.fillStyle = '#ffb000';
+    ctx.fillRect(r.x - s/2, r.y - s/2, s, s);
+    ctx.fillRect(r.x + r.width - s/2, r.y - s/2, s, s);
+    ctx.fillRect(r.x - s/2, r.y + r.height - s/2, s, s);
+    ctx.fillRect(r.x + r.width - s/2, r.y + r.height - s/2, s, s);
+  }
+
+  function drawRectangles() {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (mode === 'normal') return;
+
+    for (var i = 0; i < rectangles.length; i++) {
+      var rectangle = rectangles[i];
+      var r = processingToScreen(rectangle);
+      var selected = selectedRectangle === rectangle;
+
+      if (selected) {
+        ctx.fillStyle = 'rgba(255,170,0,0.22)';
+        ctx.strokeStyle = '#ffb000';
+      } else if (rectangle.original) {
+        ctx.fillStyle = 'rgba(0,140,255,0.22)';
+        ctx.strokeStyle = '#00aaff';
+      } else {
+        ctx.fillStyle = 'rgba(70,220,120,0.22)';
+        ctx.strokeStyle = '#48e080';
+      }
+
+      ctx.fillRect(r.x, r.y, r.width, r.height);
+      ctx.lineWidth = selected ? 3 : 2;
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
+
+      if (selected && mode === 'edit') drawResizeHandles(r);
     }
 
     if (tempRectangle) {
-        ctx.fillStyle =
-            "rgba(0,140,255,0.2)";
-
-        ctx.strokeStyle = "#00aaff";
-        ctx.lineWidth = 2;
-
-        ctx.fillRect(
-            tempRectangle.x,
-            tempRectangle.y,
-            tempRectangle.width,
-            tempRectangle.height
-        );
-
-        ctx.strokeRect(
-            tempRectangle.x,
-            tempRectangle.y,
-            tempRectangle.width,
-            tempRectangle.height
-        );
+      ctx.fillStyle = 'rgba(0,140,255,0.2)';
+      ctx.strokeStyle = '#00aaff';
+      ctx.lineWidth = 2;
+      ctx.fillRect(tempRectangle.x, tempRectangle.y, tempRectangle.width, tempRectangle.height);
+      ctx.strokeRect(tempRectangle.x, tempRectangle.y, tempRectangle.width, tempRectangle.height);
     }
-}
+  }
 
-function centerProgram() {
-    const x =
-        Math.max(
-            0,
-            (stage.clientWidth -
-                canvasWidth) / 2
-        );
+  function layoutCanvas() {
+    var canvas = canvasHost.querySelector('canvas#mycanvas');
+    if (!canvas) return;
 
-    const y =
-        Math.max(
-            0,
-            (stage.clientHeight -
-                canvasHeight) / 2
-        );
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    canvas.style.width = canvasWidth + 'px';
+    canvas.style.height = canvasHeight + 'px';
 
-    program.style.left =
-        Math.round(x) + "px";
+    overlay.width = canvasWidth;
+    overlay.height = canvasHeight;
+    overlay.style.width = canvasWidth + 'px';
+    overlay.style.height = canvasHeight + 'px';
+    overlay.style.left = '0px';
+    overlay.style.top = '0px';
 
-    program.style.top =
-        Math.round(y) + "px";
+    canvasHost.style.width = canvasWidth + 'px';
+    canvasHost.style.height = canvasHeight + 'px';
 
-    program.style.width =
-        canvasWidth + "px";
-
-    program.style.height =
-        canvasHeight + "px";
-
-    overlay.width =
-        stage.clientWidth;
-
-    overlay.height =
-        stage.clientHeight;
-
+    infoEl.style.display = 'none';
     requestDraw();
-}
+  }
 
-function runProgram() {
-    const size =
-        getCanvasSize();
+  function findMatchingBrace(text, openIndex) {
+    var depth = 0, quote = '', escaped = false, lineComment = false, blockComment = false;
+    for (var i = openIndex; i < text.length; i++) {
+      var c = text[i], n = text[i + 1];
+      if (lineComment) { if (c === '\n') lineComment = false; continue; }
+      if (blockComment) { if (c === '*' && n === '/') { blockComment = false; i++; } continue; }
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (c === '\\') escaped = true;
+        else if (c === quote) quote = '';
+        continue;
+      }
+      if (c === '/' && n === '/') { lineComment = true; i++; continue; }
+      if (c === '/' && n === '*') { blockComment = true; i++; continue; }
+      if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+      if (c === '{') depth++;
+      else if (c === '}') { depth--; if (depth === 0) return i; }
+    }
+    return -1;
+  }
 
-    canvasWidth =
-        size.width;
+  function getMouseFunctions(source) {
+    var funcs = [];
+    var pattern = /(?:function\s+)?(mousePressed|mouseClicked|mouseReleased|mouseDragged|mouseMoved|mouseOver|mouseOut)\s*(?:=\s*function)?\s*\([^)]*\)\s*\{/g;
+    var match;
+    while ((match = pattern.exec(source)) !== null) {
+      var openBrace = source.indexOf('{', match.index);
+      if (openBrace < 0) continue;
+      var closeBrace = findMatchingBrace(source, openBrace);
+      if (closeBrace < 0) continue;
+      funcs.push({
+        name: match[1],
+        body: source.slice(openBrace + 1, closeBrace),
+        openIndex: openBrace,
+        closeIndex: closeBrace
+      });
+      pattern.lastIndex = closeBrace + 1;
+    }
+    return funcs;
+  }
 
-    canvasHeight =
-        size.height;
+  function parseCondition(condition) {
+    if (!/\bmouseX\b/.test(condition) || !/\bmouseY\b/.test(condition)) return null;
 
-    rectangles =
-        parseMouseRectangles(
-            editor.value
-        );
+    var xValues = [], yValues = [];
+    var xPattern = /mouseX\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+    var yPattern = /mouseY\s*(>=|<=|>|<)\s*(-?(?:\d+(?:\.\d*)?|\.\d+))/g;
+    var xMatch, yMatch;
 
+    while ((xMatch = xPattern.exec(condition)) !== null) {
+      xValues.push({ operator: xMatch[1], value: Number(xMatch[2]) });
+    }
+    while ((yMatch = yPattern.exec(condition)) !== null) {
+      yValues.push({ operator: yMatch[1], value: Number(yMatch[2]) });
+    }
+    if (xValues.length < 2 || yValues.length < 2) return null;
+
+    var minX = -Infinity, maxX = Infinity, minY = -Infinity, maxY = Infinity;
+    for (var xi = 0; xi < xValues.length; xi++) {
+      var xv = xValues[xi];
+      if (xv.operator === '>=' || xv.operator === '>') minX = Math.max(minX, xv.value);
+      else maxX = Math.min(maxX, xv.value);
+    }
+    for (var yi = 0; yi < yValues.length; yi++) {
+      var yv = yValues[yi];
+      if (yv.operator === '>=' || yv.operator === '>') minY = Math.max(minY, yv.value);
+      else maxY = Math.min(maxY, yv.value);
+    }
+    if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) return null;
+    if (maxX <= minX || maxY <= minY) return null;
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  function parseMouseRectangles(source) {
+    var funcs = getMouseFunctions(source);
+    var result = [];
+
+    for (var f = 0; f < funcs.length; f++) {
+      var body = funcs[f].body;
+      var ifPattern = /\bif\s*\(([^{}]*)\)/g;
+      var match;
+      while ((match = ifPattern.exec(body)) !== null) {
+        var rect = parseCondition(match[1]);
+        if (!rect) continue;
+        rect.original = true;
+        rect.originalX = rect.x;
+        rect.originalY = rect.y;
+        rect.originalWidth = rect.width;
+        rect.originalHeight = rect.height;
+        rect.funcName = funcs[f].name;
+        result.push(rect);
+      }
+    }
+    return result;
+  }
+
+  function getMouseFunctionPreamble(source) {
+    var funcs = getMouseFunctions(source);
+    var result = {};
+    for (var i = 0; i < funcs.length; i++) {
+      var f = funcs[i];
+      var code = source.slice(f.openIndex, f.closeIndex + 1);
+      result[f.name] = code;
+    }
+    return result;
+  }
+
+  function runProgram() {
+    if (typeof Processing === 'undefined') {
+      setStatus('Processing.js failed to load', 'error');
+      return;
+    }
+
+    var w = parseInt(widthInput.value, 10);
+    var h = parseInt(heightInput.value, 10);
+    if (!isFinite(w) || w < 1) w = 400;
+    if (!isFinite(h) || h < 1) h = 400;
+
+    var rawSrc = getText();
+    var src = prepareSketch(rawSrc);
+
+    var sizeMatch = src.match(/\bsize\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    if (sizeMatch) {
+      canvasWidth = parseInt(sizeMatch[1], 10);
+      canvasHeight = parseInt(sizeMatch[2], 10);
+      widthInput.value = canvasWidth;
+      heightInput.value = canvasHeight;
+    } else {
+      canvasWidth = w;
+      canvasHeight = h;
+    }
+
+    sourceSnapshots = getMouseFunctionPreamble(rawSrc);
+
+    rectangles = parseMouseRectangles(rawSrc);
     selectedRectangle = null;
     tempRectangle = null;
 
-    editor.style.display =
-        "none";
+    teardown();
+    setStatus('');
 
-    stage.style.display =
-        "block";
+    var canvas = document.createElement('canvas');
+    canvas.id = 'mycanvas';
+    canvasHost.insertBefore(canvas, canvasHost.firstChild);
 
-    outputs.style.display =
-        "none";
+    var hasSize = /\bsize\s*\(/.test(src);
+    var sizeCode = hasSize ? '' : 'size(' + canvasWidth + ', ' + canvasHeight + ');\n';
 
-    // Set pointer events and overlay display based on current mode
-    if (mode === "normal") {
-        program.style.pointerEvents = "auto";
-        overlay.style.display = "none";
-    } else {
-        program.style.pointerEvents = "none";
-        overlay.style.display = "block";
-        overlay.style.pointerEvents = "auto";
+    var programCode = new Function(
+      'processingInstance',
+      'with (processingInstance) {\n' +
+      '  try {\n' +
+      '    ' + sizeCode +
+      src + '\n' +
+      '  } catch (e) {\n' +
+      '    processingInstance.__pjs_error = e;\n' +
+      '    if (window.console) console.error(e);\n' +
+      '  }\n' +
+      '}'
+    );
+
+    try {
+      instance = new Processing(canvas, programCode);
+    } catch (err) {
+      setStatus('Runtime error: ' + (err && err.message ? err.message : err), 'error');
+      return;
     }
 
-    centerProgram();
+    layoutCanvas();
+    setStatus(rectangles.length + ' rectangle' + (rectangles.length === 1 ? '' : 's') + ' detected', 'ok');
+    updateOutputs();
 
-    const html =
-        getProgramHTML();
+    if (!viewportInitialized) {
+      viewportInitialized = true;
+      setTimeout(centerViewport, 30);
+    }
 
-    program.srcdoc = html;
+    setTimeout(layoutCanvas, 100);
+    setTimeout(layoutCanvas, 400);
+  }
 
-    setStatus(
-        rectangles.length +
-        " mouse rectangle" +
-        (rectangles.length === 1 ?
-            "" :
-            "s") +
-        " detected"
-    );
-
-    setTimeout(
-        centerProgram,
-        100
-    );
-
-    setTimeout(
-        centerProgram,
-        400
-    );
-
-    setTimeout(
-        centerProgram,
-        1000
-    );
-}
-
-function editProgram() {
-    stage.style.display =
-        "none";
-
-    editor.style.display =
-        "block";
-
-    outputs.style.display =
-        "none";
-
-    contextMenu.style.display =
-        "none";
-
-    setStatus(
-        "Code editor"
-    );
-}
-
-function setMode(newMode) {
+  function setMode(newMode) {
     mode = newMode;
 
-    normalButton.classList.toggle(
-        "active",
-        mode === "normal"
-    );
+    normalButton.classList.toggle('active', mode === 'normal');
+    rectButton.classList.toggle('active', mode === 'rect');
+    editRectButton.classList.toggle('active', mode === 'edit');
 
-    rectButton.classList.toggle(
-        "active",
-        mode === "rect"
-    );
+    contextMenu.style.display = 'none';
 
-    editRectButton.classList.toggle(
-        "active",
-        mode === "edit"
-    );
-
-    contextMenu.style.display =
-        "none";
-
-    if (mode === "normal") {
-        program.style.pointerEvents =
-            "auto";
-        overlay.style.display = "none";
-        info.style.display =
-            "none";
-        selectedRectangle = null;
-        requestDraw();
-        return;
+    if (mode === 'normal') {
+      overlay.style.pointerEvents = 'none';
+      infoEl.style.display = 'none';
+      selectedRectangle = null;
+      requestDraw();
+      return;
     }
 
-    // Rect or Edit mode
-    program.style.pointerEvents =
-        "none";
-    overlay.style.display = "block";
-    overlay.style.pointerEvents =
-        "auto";
-    info.style.display =
-        "block";
-
-    if (mode === "rect") {
-        info.textContent =
-            "Drag to create a rectangle";
-    } else {
-        info.textContent =
-            "Drag or resize rectangles • Right-click for options";
-    }
-
+    overlay.style.pointerEvents = 'auto';
+    infoEl.style.display = 'block';
+    infoEl.textContent = mode === 'rect'
+      ? 'Drag to create a rectangle'
+      : 'Drag or resize rectangles · Right-click for options';
     requestDraw();
-}
+  }
 
-function getPointer(event) {
-    const rect =
-        overlay.getBoundingClientRect();
-
+  function normalizeRectangle(x1, y1, x2, y2) {
     return {
-        x: event.clientX -
-            rect.left,
-
-        y: event.clientY -
-            rect.top
+      x: Math.min(x1, x2), y: Math.min(y1, y2),
+      width: Math.abs(x2 - x1), height: Math.abs(y2 - y1)
     };
-}
+  }
 
-function normalizeRectangle(
-    x1,
-    y1,
-    x2,
-    y2
-) {
-    return {
-        x: Math.min(x1, x2),
-        y: Math.min(y1, y2),
-        width: Math.abs(x2 - x1),
-        height: Math.abs(y2 - y1)
-    };
-}
-
-function getRectangleAt(x, y) {
-    for (
-        let i = rectangles.length - 1; i >= 0; i--
-    ) {
-        const r =
-            processingToScreen(
-                rectangles[i]
-            );
-
-        if (
-            x >= r.x &&
-            x <= r.x + r.width &&
-            y >= r.y &&
-            y <= r.y + r.height
-        ) {
-            return rectangles[i];
-        }
+  function getRectangleAt(x, y) {
+    for (var i = rectangles.length - 1; i >= 0; i--) {
+      var r = processingToScreen(rectangles[i]);
+      if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) {
+        return rectangles[i];
+      }
     }
-
     return null;
-}
+  }
 
-function getCorner(r, x, y) {
-    const size = 9;
-
-    if (
-        Math.abs(x - r.x) <= size &&
-        Math.abs(y - r.y) <= size
-    ) {
-        return "nw";
-    }
-
-    if (
-        Math.abs(
-            x - (r.x + r.width)
-        ) <= size &&
-        Math.abs(y - r.y) <= size
-    ) {
-        return "ne";
-    }
-
-    if (
-        Math.abs(x - r.x) <= size &&
-        Math.abs(
-            y - (r.y + r.height)
-        ) <= size
-    ) {
-        return "sw";
-    }
-
-    if (
-        Math.abs(
-            x - (r.x + r.width)
-        ) <= size &&
-        Math.abs(
-            y - (r.y + r.height)
-        ) <= size
-    ) {
-        return "se";
-    }
-
+  function getCorner(r, x, y) {
+    var size = 9;
+    if (Math.abs(x - r.x) <= size && Math.abs(y - r.y) <= size) return 'nw';
+    if (Math.abs(x - (r.x + r.width)) <= size && Math.abs(y - r.y) <= size) return 'ne';
+    if (Math.abs(x - r.x) <= size && Math.abs(y - (r.y + r.height)) <= size) return 'sw';
+    if (Math.abs(x - (r.x + r.width)) <= size && Math.abs(y - (r.y + r.height)) <= size) return 'se';
     return null;
-}
+  }
 
-function sameRectangle(a, b) {
-    return (
-        Math.abs(a.x - b.x) < 0.01 &&
-        Math.abs(a.y - b.y) < 0.01 &&
-        Math.abs(a.width - b.width) < 0.01 &&
-        Math.abs(a.height - b.height) < 0.01
-    );
-}
+  function sameRectangle(a, b) {
+    return Math.abs(a.x - b.x) < 0.01 &&
+           Math.abs(a.y - b.y) < 0.01 &&
+           Math.abs(a.width - b.width) < 0.01 &&
+           Math.abs(a.height - b.height) < 0.01;
+  }
 
-function getOutput(rectangle) {
-    const x1 =
-        Math.round(
-            rectangle.x
-        );
+  function clampRect(rect) {
+    var x1 = Math.round(rect.x);
+    var y1 = Math.round(rect.y);
+    var x2 = Math.round(rect.x + rect.width);
+    var y2 = Math.round(rect.y + rect.height);
 
-    const y1 =
-        Math.round(
-            rectangle.y
-        );
+    if (x1 < 0) x1 = 0;
+    if (y1 < 0) y1 = 0;
+    if (x2 > canvasWidth) x2 = canvasWidth;
+    if (y2 > canvasHeight) y2 = canvasHeight;
 
-    const x2 =
-        Math.round(
-            rectangle.x +
-            rectangle.width
-        );
+    return { x1: x1, y1: y1, x2: x2, y2: y2 };
+  }
 
-    const y2 =
-        Math.round(
-            rectangle.y +
-            rectangle.height
-        );
+  function buildCondition(rect) {
+    var c = clampRect(rect);
+    var parts = [];
 
-    return (
-        "if (mouseX >= " +
-        x1 +
-        " && mouseX <= " +
-        x2 +
-        " && mouseY >= " +
-        y1 +
-        " && mouseY <= " +
-        y2 +
-        ") {\n\n}"
-    );
-}
+    if (c.x1 > 0) parts.push('mouseX >= ' + c.x1);
+    if (c.x2 < canvasWidth) parts.push('mouseX <= ' + c.x2);
+    if (c.y1 > 0) parts.push('mouseY >= ' + c.y1);
+    if (c.y2 < canvasHeight) parts.push('mouseY <= ' + c.y2);
 
-function getOutputGroups() {
-    const original = [];
-    const updated = [];
-    const newRects = [];
+    if (parts.length === 0) return 'true';
+    return parts.join(' && ');
+  }
 
-    for (const r of rectangles) {
-        const text =
-            getOutput(r);
+  function getOutput(rectangle) {
+    return 'if (' + buildCondition(rectangle) + ') {\n\n}';
+  }
 
-        if (!r.original) {
-            newRects.push(text);
-            continue;
-        }
-
-        const originalRectangle = {
-            x: r.originalX,
-            y: r.originalY,
-            width: r.originalWidth,
-            height: r.originalHeight
-        };
-
-        if (
-            sameRectangle(
-                r,
-                originalRectangle
-            )
-        ) {
-            original.push(text);
-        } else {
-            updated.push(text);
-        }
+  function getOutputGroups() {
+    var original = [], updated = [], newRects = [];
+    for (var i = 0; i < rectangles.length; i++) {
+      var r = rectangles[i];
+      var text = getOutput(r);
+      if (!r.original) { newRects.push(text); continue; }
+      var originalRectangle = {
+        x: r.originalX, y: r.originalY,
+        width: r.originalWidth, height: r.originalHeight
+      };
+      if (sameRectangle(r, originalRectangle)) original.push(text);
+      else updated.push(text);
     }
-
     return {
-        original: original.join("\n\n"),
-
-        updated: updated.join("\n\n"),
-
-        newRects: newRects.join("\n\n")
+      original: original.join('\n\n'),
+      updated: updated.join('\n\n'),
+      newRects: newRects.join('\n\n')
     };
-}
+  }
 
-function updateBox(
-    box,
-    textarea,
-    text
-) {
-    if (!text) {
-        box.style.display =
-            "none";
+  function updateOutputs() {
+    var groups = getOutputGroups();
 
-        textarea.value = "";
-        return;
+    var preambles = [];
+    for (var name in sourceSnapshots) {
+      if (sourceSnapshots.hasOwnProperty(name)) {
+        preambles.push(sourceSnapshots[name]);
+      }
     }
+    var preambleText = preambles.join('\n\n');
 
-    box.style.display =
-        "block";
-
-    textarea.value =
-        text;
-}
-
-async function printRectangles() {
-    const groups =
-        getOutputGroups();
-
-    updateBox(
-        originalBox,
-        originalOutput,
-        groups.original
-    );
-
-    updateBox(
-        updatedBox,
-        updatedOutput,
-        groups.updated
-    );
-
-    updateBox(
-        newBox,
-        newOutput,
-        groups.newRects
-    );
-
-    const combined = [
-            groups.original,
-            groups.updated,
-            groups.newRects
-        ]
-        .filter(Boolean)
-        .join("\n\n");
-
-    outputs.style.display =
-        combined ?
-        "flex" :
-        "none";
-
-    if (combined) {
-        try {
-            await navigator.clipboard.writeText(
-                combined
-            );
-
-            printButton.textContent =
-                "Copied!";
-
-            setTimeout(
-                function() {
-                    printButton.textContent =
-                        "Print / Copy";
-                },
-                1000
-            );
-        } catch {
-            // fallback
-        }
+    var origText = preambleText;
+    if (groups.original) {
+      origText = (origText ? origText + '\n\n' : '') + groups.original;
     }
-}
+    setOutputValue(originalOutput, origText);
 
-function duplicateRectangle() {
-    if (!selectedRectangle) {
-        return;
+    var updText = preambleText;
+    if (groups.updated) {
+      updText = (updText ? updText + '\n\n' : '') + groups.updated;
     }
+    setOutputValue(updatedOutput, updText);
 
-    const copy = {
-        x: selectedRectangle.x + 10,
+    var newText = preambleText;
+    if (groups.newRects) {
+      newText = (newText ? newText + '\n\n' : '') + groups.newRects;
+    }
+    setOutputValue(newOutput, newText);
+  }
 
-        y: selectedRectangle.y + 10,
+  function setOutputValue(textarea, text) {
+    if (textarea.value !== text) textarea.value = text;
+  }
 
-        width: selectedRectangle.width,
+  function copyOutput(textarea, btn) {
+    if (!textarea.value) return;
+    navigator.clipboard.writeText(textarea.value).then(function () {
+      var old = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = old;
+        btn.classList.remove('copied');
+      }, 1000);
+    }).catch(function () {});
+  }
 
-        height: selectedRectangle.height,
-
-        originalX: selectedRectangle.x + 10,
-
-        originalY: selectedRectangle.y + 10,
-
-        originalWidth: selectedRectangle.width,
-
-        originalHeight: selectedRectangle.height,
-
-        original: false
+  function duplicateRectangle() {
+    if (!selectedRectangle) return;
+    var copy = {
+      x: selectedRectangle.x + 10, y: selectedRectangle.y + 10,
+      width: selectedRectangle.width, height: selectedRectangle.height,
+      originalX: selectedRectangle.x + 10, originalY: selectedRectangle.y + 10,
+      originalWidth: selectedRectangle.width, originalHeight: selectedRectangle.height,
+      original: false
     };
-
     rectangles.push(copy);
     selectedRectangle = copy;
-
-    contextMenu.style.display =
-        "none";
-
+    contextMenu.style.display = 'none';
     requestDraw();
-}
+  }
 
-function copyRectangle() {
-    if (!selectedRectangle) {
-        return;
-    }
-
+  function copyRectangle() {
+    if (!selectedRectangle) return;
     clipboardRectangle = {
-        x: selectedRectangle.x,
-        y: selectedRectangle.y,
-        width: selectedRectangle.width,
-        height: selectedRectangle.height,
-        originalX: selectedRectangle.originalX,
-        originalY: selectedRectangle.originalY,
-        originalWidth: selectedRectangle.originalWidth,
-        originalHeight: selectedRectangle.originalHeight,
-        original: selectedRectangle.original
+      x: selectedRectangle.x, y: selectedRectangle.y,
+      width: selectedRectangle.width, height: selectedRectangle.height,
+      originalX: selectedRectangle.originalX, originalY: selectedRectangle.originalY,
+      originalWidth: selectedRectangle.originalWidth, originalHeight: selectedRectangle.originalHeight,
+      original: selectedRectangle.original
     };
+    contextMenu.style.display = 'none';
+  }
 
-    contextMenu.style.display =
-        "none";
-}
-
-function cutRectangle() {
-    if (!selectedRectangle) {
-        return;
-    }
-
+  function cutRectangle() {
+    if (!selectedRectangle) return;
     copyRectangle();
-
-    rectangles =
-        rectangles.filter(
-            r => r !== selectedRectangle
-        );
-
-    selectedRectangle =
-        null;
-
+    rectangles = rectangles.filter(function (r) { return r !== selectedRectangle; });
+    selectedRectangle = null;
     requestDraw();
-}
+  }
 
-function pasteRectangle() {
-    if (!clipboardRectangle) {
-        return;
-    }
-
-    const r = {
-        x: clipboardRectangle.x + 10,
-
-        y: clipboardRectangle.y + 10,
-
-        width: clipboardRectangle.width,
-
-        height: clipboardRectangle.height,
-
-        originalX: clipboardRectangle.x + 10,
-
-        originalY: clipboardRectangle.y + 10,
-
-        originalWidth: clipboardRectangle.width,
-
-        originalHeight: clipboardRectangle.height,
-
-        original: false
+  function pasteRectangle() {
+    if (!clipboardRectangle) return;
+    var r = {
+      x: clipboardRectangle.x + 10, y: clipboardRectangle.y + 10,
+      width: clipboardRectangle.width, height: clipboardRectangle.height,
+      originalX: clipboardRectangle.x + 10, originalY: clipboardRectangle.y + 10,
+      originalWidth: clipboardRectangle.width, originalHeight: clipboardRectangle.height,
+      original: false
     };
-
     rectangles.push(r);
     selectedRectangle = r;
-
-    contextMenu.style.display =
-        "none";
-
+    contextMenu.style.display = 'none';
     requestDraw();
-}
+  }
 
-function deleteRectangle() {
-    if (!selectedRectangle) {
-        return;
-    }
-
-    rectangles =
-        rectangles.filter(
-            r => r !== selectedRectangle
-        );
-
-    selectedRectangle =
-        null;
-
-    contextMenu.style.display =
-        "none";
-
+  function deleteRectangle() {
+    if (!selectedRectangle) return;
+    rectangles = rectangles.filter(function (r) { return r !== selectedRectangle; });
+    selectedRectangle = null;
+    contextMenu.style.display = 'none';
     requestDraw();
-}
+  }
 
-function clearRectangles() {
+  function clearRectangles() {
     rectangles = [];
     selectedRectangle = null;
     tempRectangle = null;
-
-    outputs.style.display =
-        "none";
-
-    contextMenu.style.display =
-        "none";
-
+    contextMenu.style.display = 'none';
     requestDraw();
-}
+  }
 
-overlay.addEventListener(
-    "mousedown",
-    function(event) {
-        if (mode === "normal") {
-            return;
-        }
+  overlay.addEventListener('mousedown', function (event) {
+    if (mode === 'normal') return;
+    if (event.button !== 0) return;
+    contextMenu.style.display = 'none';
+    var p = getPointer(event);
 
-        contextMenu.style.display =
-            "none";
-
-        const p =
-            getPointer(event);
-
-        if (mode === "rect") {
-            drawing = true;
-
-            startX = p.x;
-            startY = p.y;
-
-            tempRectangle = {
-                x: p.x,
-                y: p.y,
-                width: 0,
-                height: 0
-            };
-
-            requestDraw();
-
-            return;
-        }
-
-        const rectangle =
-            getRectangleAt(
-                p.x,
-                p.y
-            );
-
-        if (!rectangle) {
-            selectedRectangle = null;
-            requestDraw();
-            return;
-        }
-
-        selectedRectangle =
-            rectangle;
-
-        const screen =
-            processingToScreen(
-                rectangle
-            );
-
-        const corner =
-            getCorner(
-                screen,
-                p.x,
-                p.y
-            );
-
-        if (corner) {
-            resizing = true;
-
-            resizeStartX = p.x;
-            resizeStartY = p.y;
-
-            resizeOriginal = {
-                x: rectangle.x,
-                y: rectangle.y,
-                width: rectangle.width,
-                height: rectangle.height
-            };
-        } else {
-            dragging = true;
-
-            dragOffsetX =
-                p.x - screen.x;
-
-            dragOffsetY =
-                p.y - screen.y;
-        }
-
-        requestDraw();
+    if (mode === 'rect') {
+      drawing = true;
+      startX = p.x; startY = p.y;
+      tempRectangle = { x: p.x, y: p.y, width: 0, height: 0 };
+      requestDraw();
+      return;
     }
-);
 
-overlay.addEventListener(
-    "mousemove",
-    function(event) {
-        if (mode === "normal") {
-            return;
-        }
+    var rectangle = getRectangleAt(p.x, p.y);
+    if (!rectangle) { selectedRectangle = null; requestDraw(); return; }
 
-        const p =
-            getPointer(event);
+    selectedRectangle = rectangle;
+    var screen = processingToScreen(rectangle);
+    var corner = getCorner(screen, p.x, p.y);
 
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            tempRectangle =
-                normalizeRectangle(
-                    startX,
-                    startY,
-                    p.x,
-                    p.y
-                );
-
-            const r =
-                screenToProcessing(
-                    tempRectangle
-                );
-
-            info.textContent =
-                "X: " +
-                Math.round(r.x) +
-                "  Y: " +
-                Math.round(r.y) +
-                "  W: " +
-                Math.round(r.width) +
-                "  H: " +
-                Math.round(r.height);
-
-            requestDraw();
-
-            return;
-        }
-
-        if (
-            mode === "edit" &&
-            selectedRectangle &&
-            dragging
-        ) {
-            const screen =
-                processingToScreen(
-                    selectedRectangle
-                );
-
-            screen.x =
-                p.x - dragOffsetX;
-
-            screen.y =
-                p.y - dragOffsetY;
-
-            const converted =
-                screenToProcessing(
-                    screen
-                );
-
-            selectedRectangle.x =
-                converted.x;
-
-            selectedRectangle.y =
-                converted.y;
-
-            selectedRectangle.original =
-                false;
-
-            requestDraw();
-
-            return;
-        }
-
-        if (
-            mode === "edit" &&
-            selectedRectangle &&
-            resizing
-        ) {
-            const canvas =
-                getCanvasInformation();
-
-            const scaleX =
-                canvas ?
-                canvasWidth /
-                canvas.width :
-                1;
-
-            const scaleY =
-                canvas ?
-                canvasHeight /
-                canvas.height :
-                1;
-
-            const dx =
-                p.x - resizeStartX;
-
-            const dy =
-                p.y - resizeStartY;
-
-            selectedRectangle.x =
-                resizeOriginal.x;
-
-            selectedRectangle.y =
-                resizeOriginal.y;
-
-            selectedRectangle.width =
-                Math.max(
-                    2,
-                    resizeOriginal.width +
-                    dx * scaleX
-                );
-
-            selectedRectangle.height =
-                Math.max(
-                    2,
-                    resizeOriginal.height +
-                    dy * scaleY
-                );
-
-            selectedRectangle.original =
-                false;
-
-            requestDraw();
-        }
+    if (corner) {
+      resizing = true;
+      resizeStartX = p.x; resizeStartY = p.y;
+      resizeOriginal = { x: rectangle.x, y: rectangle.y, width: rectangle.width, height: rectangle.height };
+    } else {
+      dragging = true;
+      dragOffsetX = p.x - screen.x;
+      dragOffsetY = p.y - screen.y;
     }
-);
+    requestDraw();
+  });
 
-overlay.addEventListener(
-    "mouseup",
-    function(event) {
-        if (mode === "normal") {
-            return;
-        }
+  document.addEventListener('mousemove', function (event) {
+    if (mode === 'normal') return;
+    if (!drawing && !dragging && !resizing) return;
 
-        const p =
-            getPointer(event);
+    var p = getPointer(event);
 
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            drawing = false;
-
-            const r =
-                normalizeRectangle(
-                    startX,
-                    startY,
-                    p.x,
-                    p.y
-                );
-
-            tempRectangle = null;
-
-            if (
-                r.width >= 2 &&
-                r.height >= 2
-            ) {
-                const converted =
-                    screenToProcessing(
-                        r
-                    );
-
-                rectangles.push({
-                    x: converted.x,
-                    y: converted.y,
-                    width: converted.width,
-                    height: converted.height,
-                    originalX: converted.x,
-                    originalY: converted.y,
-                    originalWidth: converted.width,
-                    originalHeight: converted.height,
-                    original: false
-                });
-            }
-
-            info.textContent =
-                "Drag to create a rectangle";
-
-            requestDraw();
-
-            return;
-        }
-
-        dragging = false;
-        resizing = false;
-        resizeOriginal = null;
-
-        requestDraw();
+    if (mode === 'rect' && drawing) {
+      tempRectangle = normalizeRectangle(startX, startY, p.x, p.y);
+      infoEl.textContent = 'X: ' + Math.round(tempRectangle.x) + '  Y: ' + Math.round(tempRectangle.y) +
+                           '  W: ' + Math.round(tempRectangle.width) + '  H: ' + Math.round(tempRectangle.height);
+      requestDraw();
+      return;
     }
-);
 
-overlay.addEventListener(
-    "mouseleave",
-    function() {
-        if (
-            mode === "rect" &&
-            drawing
-        ) {
-            drawing = false;
-            tempRectangle = null;
-            requestDraw();
-        }
+    if (mode === 'edit' && selectedRectangle && dragging) {
+      var screen = processingToScreen(selectedRectangle);
+      screen.x = p.x - dragOffsetX;
+      screen.y = p.y - dragOffsetY;
+      selectedRectangle.x = screen.x;
+      selectedRectangle.y = screen.y;
+      requestDraw();
+      return;
     }
-);
 
-overlay.addEventListener(
-    "contextmenu",
-    function(event) {
-        if (mode !== "edit") {
-            return;
-        }
-
-        event.preventDefault();
-
-        const p =
-            getPointer(event);
-
-        const rectangle =
-            getRectangleAt(
-                p.x,
-                p.y
-            );
-
-        if (!rectangle) {
-            contextMenu.style.display =
-                "none";
-            return;
-        }
-
-        selectedRectangle =
-            rectangle;
-
-        contextMenu.style.left =
-            event.clientX + "px";
-
-        contextMenu.style.top =
-            event.clientY + "px";
-
-        contextMenu.style.display =
-            "block";
-
-        requestDraw();
+    if (mode === 'edit' && selectedRectangle && resizing) {
+      var dx = p.x - resizeStartX;
+      var dy = p.y - resizeStartY;
+      selectedRectangle.x = resizeOriginal.x;
+      selectedRectangle.y = resizeOriginal.y;
+      selectedRectangle.width = Math.max(2, resizeOriginal.width + dx);
+      selectedRectangle.height = Math.max(2, resizeOriginal.height + dy);
+      requestDraw();
     }
-);
+  });
 
-document.addEventListener(
-    "mousedown",
-    function(event) {
-        if (
-            !contextMenu.contains(
-                event.target
-            )
-        ) {
-            contextMenu.style.display =
-                "none";
-        }
+  document.addEventListener('mouseup', function (event) {
+    if (mode === 'normal') return;
+    if (!drawing && !dragging && !resizing) return;
+
+    var p = getPointer(event);
+
+    if (mode === 'rect' && drawing) {
+      drawing = false;
+      var r = normalizeRectangle(startX, startY, p.x, p.y);
+      tempRectangle = null;
+      if (r.width >= 2 && r.height >= 2) {
+        rectangles.push({
+          x: r.x, y: r.y,
+          width: r.width, height: r.height,
+          originalX: r.x, originalY: r.y,
+          originalWidth: r.width, originalHeight: r.height,
+          original: false
+        });
+      }
+      infoEl.textContent = 'Drag to create a rectangle';
+      requestDraw();
+      return;
     }
-);
 
-duplicateButton.addEventListener(
-    "click",
-    duplicateRectangle
-);
+    dragging = false;
+    resizing = false;
+    resizeOriginal = null;
+    requestDraw();
+  });
 
-copyButton.addEventListener(
-    "click",
-    copyRectangle
-);
+  overlay.addEventListener('contextmenu', function (event) {
+    if (mode !== 'edit') return;
+    event.preventDefault();
+    var p = getPointer(event);
+    var rectangle = getRectangleAt(p.x, p.y);
+    if (!rectangle) { contextMenu.style.display = 'none'; return; }
+    selectedRectangle = rectangle;
+    contextMenu.style.left = event.clientX + 'px';
+    contextMenu.style.top = event.clientY + 'px';
+    contextMenu.style.display = 'block';
+    requestDraw();
+  });
 
-cutButton.addEventListener(
-    "click",
-    cutRectangle
-);
+  stageEl.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var factor = e.deltaY > 0 ? 0.9 : 1.1;
+    zoomAt(e.clientX, e.clientY, factor);
+  }, { passive: false });
 
-pasteButton.addEventListener(
-    "click",
-    pasteRectangle
-);
-
-deleteButton.addEventListener(
-    "click",
-    deleteRectangle
-);
-
-runButton.addEventListener(
-    "click",
-    runProgram
-);
-
-editButton.addEventListener(
-    "click",
-    editProgram
-);
-
-normalButton.addEventListener(
-    "click",
-    function() {
-        setMode("normal");
+  stageEl.addEventListener('mousedown', function (e) {
+    if (e.button === 1) {
+      e.preventDefault();
+      isPanning = true;
+      panStartClientX = e.clientX;
+      panStartClientY = e.clientY;
+      panStartPanX = viewportPanX;
+      panStartPanY = viewportPanY;
+      stageEl.style.cursor = 'grabbing';
     }
-);
+  });
 
-rectButton.addEventListener(
-    "click",
-    function() {
-        setMode("rect");
+  window.addEventListener('mousemove', function (e) {
+    if (!isPanning) return;
+    viewportPanX = panStartPanX + (e.clientX - panStartClientX);
+    viewportPanY = panStartPanY + (e.clientY - panStartClientY);
+    applyViewport();
+  });
+
+  window.addEventListener('mouseup', function (e) {
+    if (isPanning && e.button === 1) {
+      isPanning = false;
+      stageEl.style.cursor = '';
     }
-);
+  });
 
-editRectButton.addEventListener(
-    "click",
-    function() {
-        setMode("edit");
-    }
-);
+  stageEl.addEventListener('auxclick', function (e) {
+    if (e.button === 1) e.preventDefault();
+  });
 
-printButton.addEventListener(
-    "click",
-    printRectangles
-);
+  document.addEventListener('mousedown', function (event) {
+    if (!contextMenu.contains(event.target)) contextMenu.style.display = 'none';
+  });
 
-clearButton.addEventListener(
-    "click",
-    clearRectangles
-);
+  duplicateButton.addEventListener('click', duplicateRectangle);
+  copyButton.addEventListener('click', copyRectangle);
+  cutButton.addEventListener('click', cutRectangle);
+  pasteButton.addEventListener('click', pasteRectangle);
+  deleteButton.addEventListener('click', deleteRectangle);
 
-widthInput.addEventListener(
-    "change",
-    function() {
-        const size =
-            getCanvasSize();
+  normalButton.addEventListener('click', function () { setMode('normal'); });
+  rectButton.addEventListener('click', function () { setMode('rect'); });
+  editRectButton.addEventListener('click', function () { setMode('edit'); });
+  clearButton.addEventListener('click', clearRectangles);
 
-        canvasWidth =
-            size.width;
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var targetId = btn.getAttribute('data-target');
+      var target = document.getElementById(targetId);
+      copyOutput(target, btn);
+    });
+  });
 
-        if (
-            stage.style.display !==
-            "none"
-        ) {
-            centerProgram();
-        }
-    }
-);
+  editorToggle.addEventListener('click', function () {
+    var isOpen = editorPane.classList.toggle('open');
+    editorToggle.classList.toggle('active', isOpen);
+    setTimeout(function () {
+      layoutCanvas();
+      centerViewport();
+      renderGutter();
+    }, 320);
+  });
 
-heightInput.addEventListener(
-    "change",
-    function() {
-        const size =
-            getCanvasSize();
+  widthInput.addEventListener('input', function () {
+    var v = parseInt(widthInput.value, 10);
+    if (isFinite(v) && v > 0) { canvasWidth = v; scheduleRun(); }
+  });
+  heightInput.addEventListener('input', function () {
+    var v = parseInt(heightInput.value, 10);
+    if (isFinite(v) && v > 0) { canvasHeight = v; scheduleRun(); }
+  });
 
-        canvasHeight =
-            size.height;
+  var runTimer = null;
+  function scheduleRun() {
+    clearTimeout(runTimer);
+    runTimer = setTimeout(runProgram, 500);
+  }
 
-        if (
-            stage.style.display !==
-            "none"
-        ) {
-            centerProgram();
-        }
-    }
-);
+  window.addEventListener('error', function (e) {
+    if (e && e.message) setStatus('Error: ' + e.message, 'error');
+  });
 
-window.addEventListener(
-    "resize",
-    function() {
-        if (
-            stage.style.display !==
-            "none"
-        ) {
-            centerProgram();
-        }
-    }
-);
+  window.addEventListener('resize', function () {
+    setTimeout(layoutCanvas, 50);
+  });
 
-editor.addEventListener(
-    "keydown",
-    function(event) {
-        if (event.key !== "Tab") {
-            return;
-        }
-
-        event.preventDefault();
-
-        const start =
-            editor.selectionStart;
-
-        const end =
-            editor.selectionEnd;
-
-        editor.setRangeText(
-            "    ",
-            start,
-            end,
-            "end"
-        );
-    }
-);
-
-setMode("normal");
+  setText(DEFAULT_CODE);
+  setMode('normal');
+  runProgram();
+  codeEl.focus();
+  renderGutter();
+})();
 </script>
 </body>
 </html>
