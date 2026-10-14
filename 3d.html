@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3D OBJ Editor · Khan Academy Tools</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(60, 140, 255, 0.18), transparent 35%),
+      radial-gradient(circle at 80% 80%, rgba(120, 70, 255, 0.18), transparent 35%),
+      linear-gradient(135deg, #080d1a, #101a32 50%, #080d1a);
+    color: white;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  canvas#c { display: block; position: fixed; inset: 0; }
+
+  .background {
+    position: fixed; inset: 0; pointer-events: none;
+    overflow: hidden; z-index: 0;
+  }
+  .circle {
+    position: absolute; border-radius: 50%;
+    filter: blur(2px); opacity: 0.18;
+    animation: float 8s ease-in-out infinite;
+  }
+  .circle:nth-child(1) { width: 300px; height: 300px; background: #2684ff; top: -100px; left: -80px; }
+  .circle:nth-child(2) { width: 240px; height: 240px; background: #8b5cf6; right: -60px; bottom: -50px; animation-delay: 2s; }
+  .circle:nth-child(3) { width: 120px; height: 120px; background: #22c1ff; right: 25%; top: 12%; animation-delay: 4s; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-25px) scale(1.05); }
+  }
+
+  #brand {
+    position: fixed; top: 20px; left: 20px; z-index: 5;
+    display: flex; align-items: center; gap: 12px;
+    pointer-events: none;
+  }
+  #brand .brand-logo {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg, #2684ff, #7357ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; font-weight: bold; color: #fff;
+    box-shadow: 0 10px 30px rgba(38, 132, 255, 0.35);
+    letter-spacing: -0.5px;
+  }
+  #brand .brand-text h1 {
+    margin: 0; font-size: 17px; font-weight: 700;
+    letter-spacing: -0.3px;
+    background: linear-gradient(90deg, #ffffff, #8dc5ff, #b99cff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #brand .brand-text span {
+    display: block; font-size: 10.5px; color: #7d8aa3;
+    letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
+  }
+
+  #hud {
+    position: fixed; top: 90px; left: 20px; width: 284px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.055);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    font-size: 13px;
+    user-select: none;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    z-index: 5;
+    transition: border-color 0.3s ease;
+  }
+  #hud:hover { border-color: rgba(100, 170, 255, 0.35); }
+
+  /* Buttons */
+  .btn {
+    display: block; width: 100%; text-align: center;
+    cursor: pointer; padding: 10px 12px; border-radius: 12px;
+    background: linear-gradient(135deg, #2684ff, #4f6cff);
+    color: #fff; font-weight: 600; font-size: 13px;
+    border: none; font-family: inherit;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 22px rgba(38, 132, 255, 0.3);
+  }
+  .btn:hover  { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(38, 132, 255, 0.4); }
+  .btn:active { transform: translateY(0); }
+  .btn.green {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    box-shadow: 0 8px 22px rgba(22, 163, 74, 0.3);
+    margin-top: 10px;
+  }
+  .btn.green:hover { box-shadow: 0 12px 28px rgba(22, 163, 74, 0.4); }
+
+  /* Rows */
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: #c3c8d0; }
+  .row input[type="checkbox"] { accent-color: #2684ff; cursor: pointer; }
+  .row input[type="color"] {
+    width: 42px; height: 28px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer; background: transparent; padding: 0;
+  }
+  .row button {
+    flex: 1; padding: 8px 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #c3c8d0; font-size: 12px; cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+  .row button:hover { background: rgba(255,255,255,0.08); }
+  .row button.active {
+    background: linear-gradient(135deg, #2684ff, #7357ff);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 6px 18px rgba(38, 132, 255, 0.3);
+  }
+  .row span { font-size: 11.5px; color: #8b929c; }
+
+  /* Text */
+  .hint { margin: 12px 0 0; font-size: 11.5px; line-height: 1.5; color: #8b929c; }
+
+  #status {
+    margin: 12px 0 0; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 11.5px; line-height: 1.5;
+    color: #7dd3a0; word-break: break-word; white-space: pre-line;
+  }
+  #status.err { color: #f28b82; }
+
+  #drop {
+    position: fixed; inset: 0; display: none; place-items: center;
+    background: rgba(38, 132, 255, 0.12);
+    backdrop-filter: blur(4px);
+    border: 2px dashed rgba(100, 170, 255, 0.75);
+    color: #dbeafe; font-size: 20px; font-weight: 600;
+    pointer-events: none; z-index: 10;
+  }
+  #drop.on { display: grid; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- decorative background -->
+<div class="background">
+  <div class="circle"></div>
+  <div class="circle"></div>
+  <div class="circle"></div>
+</div>
+
+<!-- brand (KA logo) top-left -->
+<div id="brand">
+  <div class="brand-logo">KA</div>
+  <div class="brand-text">
+    <h1>3D OBJ Editor</h1>
+    <span>Khan Academy Tools</span>
+  </div>
+</div>
+
+<!-- control panel -->
+<div id="hud">
+  <label class="btn">
+    Open .obj / .mtl
+    <input id="file" type="file" multiple accept=".obj,.mtl" hidden />
+  </label>
+
+  <button id="export" class="btn green">Export PJS</button>
+
+  <div class="row">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <input type="checkbox" id="gridToggle" checked /> Grid
+    </label>
+  </div>
+
+  <div class="row">
+    <span>Fill:</span>
+    <input type="color" id="fillColor" value="#ff4444" />
+  </div>
+
+  <div class="row">
+    <button data-mode="orbit" class="active">Orbit</button>
+    <button data-mode="fill">Fill</button>
+  </div>
+
+  <p class="hint">Drag to orbit · Right-drag to pan · Scroll to zoom · In Fill mode click a face to paint the whole object.</p>
+  <p id="status">No model loaded.</p>
+</div>
+
+<div id="drop">Drop .obj / .mtl here</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader }     from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader }     from 'three/addons/loaders/MTLLoader.js';
+
+THREE.ColorManagement.enabled = false;
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
+camera.position.set(180, 130, 260);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping   = true;
+controls.dampingFactor   = 0.08;
+controls.screenSpacePanning = true;
+controls.enableZoom      = false; // we handle wheel ourselves (see below)
+
+const gridHelper = new THREE.GridHelper(400, 40, 0x3b82f6, 0x1e3a8a);
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.35;
+scene.add(gridHelper);
+
+const LIGHTS = [
+  { dir: [0,    1.5, 0  ], color: [255, 255, 255], brightness: 5 },
+  { dir: [-0.5, -0.5, 0 ], color: [255, 255, 255], brightness: 5 }
+];
+
+let triangles = [];       // flat list of {a, b, c, color, lit, meshId}
+let meshObj   = null;     // current THREE.Mesh
+let currentMode = 'orbit';
+let fillRGB   = [255, 68, 68];
+let blobUrls  = [];
+let objectCount = 0;
+
+const statusEl  = document.getElementById('status');
+const dropEl    = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+
+function setStatus(msg, isError = false) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle('err', isError);
+}
+
+function disposeCurrent() {
+  if (meshObj) {
+    scene.remove(meshObj);
+    meshObj.geometry.dispose();
+    meshObj.material.dispose();
+    meshObj = null;
+  }
+  for (const u of blobUrls) URL.revokeObjectURL(u);
+  blobUrls = [];
+  triangles = [];
+  objectCount = 0;
+}
+
+function bakeAll() {
+  if (!triangles.length) return;
+
+  const centres = new Map();
+  for (const t of triangles) {
+    if (!centres.has(t.meshId)) centres.set(t.meshId, [0, 0, 0, 0]);
+    const c = centres.get(t.meshId);
+    c[0] += t.a[0] + t.b[0] + t.c[0];
+    c[1] += t.a[1] + t.b[1] + t.c[1];
+    c[2] += t.a[2] + t.b[2] + t.c[2];
+    c[3] += 3;
+  }
+  for (const c of centres.values()) {
+    c[0] /= c[3]; c[1] /= c[3]; c[2] /= c[3];
+  }
+
+  for (const t of triangles) {
+    const c  = centres.get(t.meshId);
+    const ax = t.a[0], ay = t.a[1], az = t.a[2];
+    const ux = t.b[0] - ax, uy = t.b[1] - ay, uz = t.b[2] - az;
+    const vx = t.c[0] - ax, vy = t.c[1] - ay, vz = t.c[2] - az;
+
+    let nx = uy * vz - uz * vy;
+    let ny = uz * vx - ux * vz;
+    let nz = ux * vy - uy * vx;
+    const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+    nx /= nl; ny /= nl; nz /= nl;
+
+    const fcx = (t.a[0] + t.b[0] + t.c[0]) / 3;
+    const fcy = (t.a[1] + t.b[1] + t.c[1]) / 3;
+    const fcz = (t.a[2] + t.b[2] + t.c[2]) / 3;
+
+    if (nx * (fcx - c[0]) + ny * (fcy - c[1]) + nz * (fcz - c[2]) < 0) {
+      nx = -nx; ny = -ny; nz = -nz;
+    }
+
+    let r = t.color[0] * 0.12;
+    let g = t.color[1] * 0.12;
+    let b = t.color[2] * 0.12;
+
+    for (const L of LIGHTS) {
+      const ll = Math.sqrt(L.dir[0] * L.dir[0] + L.dir[1] * L.dir[1] + L.dir[2] * L.dir[2]) || 1;
+      const lx = L.dir[0] / ll, ly = L.dir[1] / ll, lz = L.dir[2] / ll;
+      let d = nx * lx + ny * ly + nz * lz;
+      if (d < 0) d = 0;
+      r += t.color[0] * d * L.brightness * L.color[0] / 255;
+      g += t.color[1] * d * L.brightness * L.color[1] / 255;
+      b += t.color[2] * d * L.brightness * L.color[2] / 255;
+    }
+
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    t.lit = [r, g, b];
+  }
+}
+function buildThreeMesh() {
+  if (meshObj) {
+    scene.remove(meshObj);
+    meshObj.geometry.dispose();
+    meshObj.material.dispose();
+    meshObj = null;
+  }
+  if (!triangles.length) return;
+
+  const positions = new Float32Array(triangles.length * 9);
+  const colors    = new Float32Array(triangles.length * 9);
+  let pi = 0;
+
+  for (const t of triangles) {
+    positions[pi]     = t.a[0]; positions[pi + 1] = t.a[1]; positions[pi + 2] = t.a[2];
+    positions[pi + 3] = t.b[0]; positions[pi + 4] = t.b[1]; positions[pi + 5] = t.b[2];
+    positions[pi + 6] = t.c[0]; positions[pi + 7] = t.c[1]; positions[pi + 8] = t.c[2];
+
+    const r = t.lit[0] / 255, g = t.lit[1] / 255, b = t.lit[2] / 255;
+    colors[pi]     = r; colors[pi + 1] = g; colors[pi + 2] = b;
+    colors[pi + 3] = r; colors[pi + 4] = g; colors[pi + 5] = b;
+    colors[pi + 6] = r; colors[pi + 7] = g; colors[pi + 8] = b;
+    pi += 9;
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+
+  meshObj = new THREE.Mesh(geom, mat);
+  scene.add(meshObj);
+}
+
+function frameCamera() {
+  if (!triangles.length) return;
+
+  let minX = 1e9, minY = 1e9, minZ = 1e9;
+  let maxX = -1e9, maxY = -1e9, maxZ = -1e9;
+  for (const t of triangles) {
+    for (const v of [t.a, t.b, t.c]) {
+      if (v[0] < minX) minX = v[0]; if (v[0] > maxX) maxX = v[0];
+      if (v[1] < minY) minY = v[1]; if (v[1] > maxY) maxY = v[1];
+      if (v[2] < minZ) minZ = v[2]; if (v[2] > maxZ) maxZ = v[2];
+    }
+  }
+
+  const cx   = (minX + maxX) / 2;
+  const cy   = (minY + maxY) / 2;
+  const cz   = (minZ + maxZ) / 2;
+  const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ) || 1;
+
+  const fitDist = size / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+  const dist    = fitDist * 1.6;
+
+  camera.near = size * 0.001;
+  camera.far  = size * 100;
+  camera.position.set(cx + dist * 0.6, cy + dist * 0.5, cz + dist * 1.2);
+  camera.updateProjectionMatrix();
+
+  controls.target.set(cx, cy, cz);
+  controls.minDistance = size * 0.01;
+  controls.maxDistance = size * 100;
+  controls.update();
+}
+
+async function loadFiles(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  const objFile = files.find(f => /\.obj$/i.test(f.name));
+  if (!objFile) { setStatus('No .obj file found.', true); return; }
+
+  disposeCurrent();
+  setStatus('Loading…');
+
+  const fileMap = new Map();
+  for (const f of files) {
+    const url = URL.createObjectURL(f);
+    blobUrls.push(url);
+    fileMap.set(f.name.toLowerCase(), url);
+  }
+
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => {
+    if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+    const clean = url.split('?')[0].split('#')[0];
+    const name  = clean.replace(/\\/g, '/').split('/').pop().toLowerCase();
+    if (fileMap.has(name)) return fileMap.get(name);
+    try {
+      const dec = decodeURIComponent(name);
+      if (fileMap.has(dec)) return fileMap.get(dec);
+    } catch (e) {}
+    return url;
+  });
+
+  try {
+    const objText = await objFile.text();
+
+    const mtlMatch = objText.match(/^\s*mtllib\s+(.+?)\s*$/mi);
+    let mtlFile = null;
+    if (mtlMatch) {
+      const wanted = mtlMatch[1].replace(/\\/g, '/').split('/').pop().toLowerCase();
+      mtlFile = files.find(f => f.name.toLowerCase() === wanted) || null;
+    }
+    if (!mtlFile) mtlFile = files.find(f => /\.mtl$/i.test(f.name)) || null;
+
+    let materials = null;
+    if (mtlFile) {
+      const mtlText = await mtlFile.text();
+      const mtlLoader = new MTLLoader(manager);
+      materials = mtlLoader.parse(mtlText, '');
+      materials.preload();
+    }
+
+    const objLoader = new OBJLoader(manager);
+    if (materials) objLoader.setMaterials(materials);
+    const group = objLoader.parse(objText);
+
+    // flatten every mesh into our triangle list
+    triangles = [];
+    let meshId = 0;
+    group.traverse(child => {
+      if (!child.isMesh || !child.geometry) return;
+      const geom = child.geometry;
+      const pos  = geom.attributes.position;
+      if (!pos) return;
+      const idx = geom.index;
+
+      let color = [180, 180, 180];
+      const mat = Array.isArray(child.material) ? child.material[0] : child.material;
+      if (mat && mat.color) {
+        color = [
+          Math.round(mat.color.r * 255),
+          Math.round(mat.color.g * 255),
+          Math.round(mat.color.b * 255)
+        ];
+      }
+
+      const triCount = idx ? idx.count / 3 : pos.count / 3;
+      for (let t = 0; t < triCount; t++) {
+        const i0 = idx ? idx.getX(t * 3)     : t * 3;
+        const i1 = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+        const i2 = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+        const a = [pos.getX(i0), pos.getY(i0), pos.getZ(i0)];
+        const b = [pos.getX(i1), pos.getY(i1), pos.getZ(i1)];
+        const c = [pos.getX(i2), pos.getY(i2), pos.getZ(i2)];
+        triangles.push({ a, b, c, color: color.slice(), lit: [0, 0, 0], meshId });
+      }
+      meshId++;
+    });
+
+    if (!triangles.length) throw new Error('No geometry found.');
+
+    // normalise: centre on origin, scale radius to 100
+    let minX = 1e9, minY = 1e9, minZ = 1e9;
+    let maxX = -1e9, maxY = -1e9, maxZ = -1e9;
+    for (const t of triangles) {
+      for (const v of [t.a, t.b, t.c]) {
+        if (v[0] < minX) minX = v[0]; if (v[0] > maxX) maxX = v[0];
+        if (v[1] < minY) minY = v[1]; if (v[1] > maxY) maxY = v[1];
+        if (v[2] < minZ) minZ = v[2]; if (v[2] > maxZ) maxZ = v[2];
+      }
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const cz = (minZ + maxZ) / 2;
+    let maxR = 0;
+    for (const t of triangles) {
+      for (const v of [t.a, t.b, t.c]) {
+        v[0] -= cx; v[1] -= cy; v[2] -= cz;
+        const r = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+        if (r > maxR) maxR = r;
+      }
+    }
+    if (maxR > 0) {
+      const s = 100 / maxR;
+      for (const t of triangles) {
+        for (const v of [t.a, t.b, t.c]) {
+          v[0] *= s; v[1] *= s; v[2] *= s;
+        }
+      }
+    }
+
+    objectCount = meshId;
+    bakeAll();
+    buildThreeMesh();
+    frameCamera();
+
+    setStatus(
+      objFile.name + '\n' +
+      triangles.length.toLocaleString() + ' triangles · ' +
+      objectCount + ' object(s)'
+    );
+  } catch (err) {
+    console.error(err);
+    disposeCurrent();
+    setStatus('Failed: ' + err.message, true);
+  }
+}
+
+function generatePJS() {
+  const byMesh = new Map();
+  for (const t of triangles) {
+    if (!byMesh.has(t.meshId)) byMesh.set(t.meshId, []);
+    byMesh.get(t.meshId).push(t);
+  }
+
+  const L = [];
+  const P = s => L.push(s);
+
+  P('var zbuf = new Array(160000);');
+  P('');
+  P('var M = [1,0,0, 0,1,0, 0,0,1];');
+  P('');
+  P('var mul = function(A, B) {');
+  P('    return [');
+  P('        A[0]*B[0]+A[1]*B[3]+A[2]*B[6], A[0]*B[1]+A[1]*B[4]+A[2]*B[7], A[0]*B[2]+A[1]*B[5]+A[2]*B[8],');
+  P('        A[3]*B[0]+A[4]*B[3]+A[5]*B[6], A[3]*B[1]+A[4]*B[4]+A[5]*B[7], A[3]*B[2]+A[4]*B[5]+A[5]*B[8],');
+  P('        A[6]*B[0]+A[7]*B[3]+A[8]*B[6], A[6]*B[1]+A[7]*B[4]+A[8]*B[7], A[6]*B[2]+A[7]*B[5]+A[8]*B[8]');
+  P('    ];');
+  P('};');
+  P('');
+  P('var warp = function(v) {');
+  P('    return [');
+  P('        M[0]*v[0]+M[1]*v[1]+M[2]*v[2],');
+  P('        M[3]*v[0]+M[4]*v[1]+M[5]*v[2],');
+  P('        M[6]*v[0]+M[7]*v[1]+M[8]*v[2]');
+  P('    ];');
+  P('};');
+  P('');
+
+  const objStrs = [];
+  for (const [, tris] of byMesh) {
+    const verts = [];
+    const vmap  = new Map();
+    const faces = [];
+    const c     = tris[0].color;
+
+    for (const t of tris) {
+      const triIdx = [];
+      for (const v of [t.a, t.b, t.c]) {
+        const key = v[0].toFixed(3) + ',' + v[1].toFixed(3) + ',' + v[2].toFixed(3);
+        let i = vmap.get(key);
+        if (i === undefined) {
+          i = verts.length;
+          verts.push(v);
+          vmap.set(key, i);
+        }
+        triIdx.push(i);
+      }
+      faces.push([triIdx[0], triIdx[1], triIdx[2], triIdx[2]]);
+    }
+
+    const vStr = verts.map(v => '            [' + v[0].toFixed(2) + ', ' + v[1].toFixed(2) + ', ' + v[2].toFixed(2) + ']').join(',\n');
+    const fStr = faces.map(f => '            [' + f.join(', ') + ']').join(',\n');
+
+    objStrs.push(
+      '    {\n' +
+      '        V: [\n' + vStr + '\n        ],\n' +
+      '        F: [\n' + fStr + '\n        ],\n' +
+      '        color: [' + Math.round(c[0]) + ', ' + Math.round(c[1]) + ', ' + Math.round(c[2]) + '],\n' +
+      '        lit: []\n' +
+      '    }'
+    );
+  }
+
+  P('var Objects = [');
+  P(objStrs.join(',\n'));
+  P('];');
+  P('');
+  P('var LIGHTS = [');
+  P('    [0, 1.5, 0, 5, [255, 255, 255]],');
+  P('    [-0.5, -0.5, 0, 5, [255, 255, 255]]');
+  P('];');
+  P('');
+  P('for (var oi = 0; oi < Objects.length; oi++) {');
+  P('    var obj = Objects[oi];');
+  P('    var ocx = 0, ocy = 0, ocz = 0;');
+  P('    for (var i = 0; i < obj.V.length; i++) {');
+  P('        ocx += obj.V[i][0];');
+  P('        ocy += obj.V[i][1];');
+  P('        ocz += obj.V[i][2];');
+  P('    }');
+  P('    ocx /= obj.V.length;');
+  P('    ocy /= obj.V.length;');
+  P('    ocz /= obj.V.length;');
+  P('    for (var i = 0; i < obj.F.length; i++) {');
+  P('        var f = obj.F[i];');
+  P('        var v0 = obj.V[f[0]], v1 = obj.V[f[1]], v2 = obj.V[f[2]];');
+  P('        var ax = v1[0]-v0[0], ay = v1[1]-v0[1], az = v1[2]-v0[2];');
+  P('        var bx = v2[0]-v0[0], by = v2[1]-v0[1], bz = v2[2]-v0[2];');
+  P('        var nx = ay*bz - az*by;');
+  P('        var ny = az*bx - ax*bz;');
+  P('        var nz = ax*by - ay*bx;');
+  P('        var nl = Math.sqrt(nx*nx + ny*ny + nz*nz);');
+  P('        if (nl > 0) { nx /= nl; ny /= nl; nz /= nl; }');
+  P('        var fcx = 0, fcy = 0, fcz = 0;');
+  P('        for (var j = 0; j < f.length; j++) {');
+  P('            fcx += obj.V[f[j]][0];');
+  P('            fcy += obj.V[f[j]][1];');
+  P('            fcz += obj.V[f[j]][2];');
+  P('        }');
+  P('        fcx /= f.length;');
+  P('        fcy /= f.length;');
+  P('        fcz /= f.length;');
+  P('        if (nx*(fcx-ocx) + ny*(fcy-ocy) + nz*(fcz-ocz) < 0) { nx = -nx; ny = -ny; nz = -nz; }');
+  P('        var r = obj.color[0] * 0.12;');
+  P('        var g = obj.color[1] * 0.12;');
+  P('        var b = obj.color[2] * 0.12;');
+  P('        for (var k = 0; k < LIGHTS.length; k++) {');
+  P('            var Lt = LIGHTS[k];');
+  P('            var ll = Math.sqrt(Lt[0]*Lt[0] + Lt[1]*Lt[1] + Lt[2]*Lt[2]);');
+  P('            if (ll === 0) { continue; }');
+  P('            var lx = Lt[0]/ll, ly = Lt[1]/ll, lz = Lt[2]/ll;');
+  P('            var d = nx*lx + ny*ly + nz*lz;');
+  P('            if (d < 0) { d = 0; }');
+  P('            r += obj.color[0] * d * Lt[3] * Lt[4][0] / 255;');
+  P('            g += obj.color[1] * d * Lt[3] * Lt[4][1] / 255;');
+  P('            b += obj.color[2] * d * Lt[3] * Lt[4][2] / 255;');
+  P('        }');
+  P('        if (r > 255) { r = 255; }');
+  P('        if (g > 255) { g = 255; }');
+  P('        if (b > 255) { b = 255; }');
+  P('        obj.lit.push([r, g, b]);');
+  P('    }');
+  P('}');
+  P('');
+  P('var edge = function(ax, ay, bx, by, px, py) {');
+  P('    return (px-ax)*(by-ay) - (py-ay)*(bx-ax);');
+  P('};');
+  P('');
+  P('var tri = function(d, a, b, c, col) {');
+  P('    var minX = Math.max(0, Math.floor(Math.min(a[0], b[0], c[0])));');
+  P('    var maxX = Math.min(399, Math.ceil(Math.max(a[0], b[0], c[0])));');
+  P('    var minY = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1])));');
+  P('    var maxY = Math.min(399, Math.ceil(Math.max(a[1], b[1], c[1])));');
+  P('    var area = edge(a[0], a[1], b[0], b[1], c[0], c[1]);');
+  P('    if (area === 0) { return; }');
+  P('    var inv = 1 / area;');
+  P('    var invW0 = 1 / a[3];');
+  P('    var invW1 = 1 / b[3];');
+  P('    var invW2 = 1 / c[3];');
+  P('    var cr = col[0], cg = col[1], cb = col[2];');
+  P('    for (var y = minY; y <= maxY; y++) {');
+  P('        var row = y * 400;');
+  P('        for (var x = minX; x <= maxX; x++) {');
+  P('            var w0 = edge(b[0], b[1], c[0], c[1], x, y) * inv;');
+  P('            if (w0 < 0) { continue; }');
+  P('            var w1 = edge(c[0], c[1], a[0], a[1], x, y) * inv;');
+  P('            if (w1 < 0) { continue; }');
+  P('            var w2 = 1 - w0 - w1;');
+  P('            if (w2 < 0) { continue; }');
+  P('            var idx = row + x;');
+  P('            var invW = w0 * invW0 + w1 * invW1 + w2 * invW2;');
+  P('            if (invW === 0) { continue; }');
+  P('            var z = 1 / invW - 500;');
+  P('            if (z >= zbuf[idx]) { continue; }');
+  P('            zbuf[idx] = z;');
+  P('            var n = idx * 4;');
+  P('            d[n] = cr;');
+  P('            d[n + 1] = cg;');
+  P('            d[n + 2] = cb;');
+  P('        }');
+  P('    }');
+  P('};');
+  P('');
+  P('var project = function(obj, f) {');
+  P('    var v = [');
+  P('        warp(obj.V[f[0]]), warp(obj.V[f[1]]), warp(obj.V[f[2]]), warp(obj.V[f[3]])');
+  P('    ];');
+  P('    var p = [];');
+  P('    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;');
+  P('    for (var j = 0; j < 4; j++) {');
+  P('        var w = 500 + v[j][2];');
+  P('        if (w <= 1) { return null; }');
+  P('        var sc = 500 / w;');
+  P('        var sx = 200 + v[j][0]*sc;');
+  P('        var sy = 200 + v[j][1]*sc;');
+  P('        p[j] = [sx, sy, v[j][2], w];');
+  P('        if (sx < minX) { minX = sx; }');
+  P('        if (sx > maxX) { maxX = sx; }');
+  P('        if (sy < minY) { minY = sy; }');
+  P('        if (sy > maxY) { maxY = sy; }');
+  P('    }');
+  P('    if (maxX < 0 || minX > 399 || maxY < 0 || minY > 399) { return null; }');
+  P('    return { p: p };');
+  P('};');
+  P('');
+  P('draw = function() {');
+  P('    background(115, 14, 115);');
+  P('    strokeWeight(20);');
+  P('    if (mouseIsPressed) {');
+  P('        M = mul([');
+  P('            1,0,0,');
+  P('            0,Math.cos((mouseY-pmouseY)*0.01),-Math.sin((mouseY-pmouseY)*0.01),');
+  P('            0,Math.sin((mouseY-pmouseY)*0.01),Math.cos((mouseY-pmouseY)*0.01)');
+  P('        ], M);');
+  P('        M = mul([');
+  P('            Math.cos((pmouseX-mouseX)*0.01),0,Math.sin((pmouseX-mouseX)*0.01),');
+  P('            0,1,0,');
+  P('            -Math.sin((pmouseX-mouseX)*0.01),0,Math.cos((pmouseX-mouseX)*0.01)');
+  P('        ], M);');
+  P('    }');
+  P('    var quads = [];');
+  P('    for (var oi = 0; oi < Objects.length; oi++) {');
+  P('        var obj = Objects[oi];');
+  P('        for (var i = 0; i < obj.F.length; i++) {');
+  P('            var q = project(obj, obj.F[i]);');
+  P('            if (q) { quads.push({ q: q, oi: oi, fi: i }); }');
+  P('        }');
+  P('    }');
+  P('    loadPixels();');
+  P('    var d = imageData.data;');
+  P('    zbuf.fill(1e9);');
+  P('    for (var i = 0; i < quads.length; i++) {');
+  P('        var qq = quads[i];');
+  P('        var col = Objects[qq.oi].lit[qq.fi];');
+  P('        tri(d, qq.q.p[0], qq.q.p[1], qq.q.p[2], col);');
+  P('        tri(d, qq.q.p[0], qq.q.p[2], qq.q.p[3], col);');
+  P('    }');
+  P('    updatePixels();');
+  P('};');
+
+  return L.join('\n');
+}
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (!camera || !controls) return;
+
+  const sign  = Math.sign(e.deltaY);
+  const step  = 1 + sign * 0.08;             // 8% per notch
+
+  const offset = camera.position.clone().sub(controls.target);
+  let dist     = offset.length() * step;
+  dist = Math.min(controls.maxDistance, Math.max(controls.minDistance, dist));
+
+  offset.setLength(dist);
+  camera.position.copy(controls.target).add(offset);
+}, { passive: false });
+
+const raycaster = new THREE.Raycaster();
+const pointer   = new THREE.Vector2();
+let downX = 0, downY = 0, downTime = 0, downButton = 0;
+
+canvas.addEventListener('mousedown', e => {
+  downX = e.clientX; downY = e.clientY;
+  downTime = Date.now(); downButton = e.button;
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (e.button !== downButton) return;
+  const dx = e.clientX - downX, dy = e.clientY - downY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  // only treat as a click if it barely moved and was quick
+  if (dist > 5 || Date.now() - downTime > 500) return;
+  if (currentMode !== 'fill' || e.button !== 0) return;
+  if (!meshObj) return;
+
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+  pointer.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+
+  const hits = raycaster.intersectObject(meshObj, false);
+  if (!hits.length) return;
+  const triIdx = hits[0].faceIndex;
+  if (triIdx === undefined) return;
+
+  const meshId = triangles[triIdx].meshId;
+  for (const t of triangles) {
+    if (t.meshId === meshId) t.color = fillRGB.slice();
+  }
+  bakeAll();
+  buildThreeMesh();
+  setStatus('Filled object ' + meshId + ' with rgb(' + fillRGB.join(', ') + ')');
+});
+
+fileInput.addEventListener('change', e => {
+  loadFiles(e.target.files);
+  e.target.value = '';
+});
+
+document.getElementById('export').addEventListener('click', () => {
+  if (!triangles.length) { setStatus('Nothing to export.', true); return; }
+  const code = generatePJS();
+  const copy = () => {
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); setStatus('PJS copied to clipboard'); }
+    catch (err) { setStatus('Copy failed', true); }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(
+      () => setStatus('PJS copied to clipboard'),
+      copy
+    );
+  } else copy();
+});
+
+document.querySelectorAll('[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentMode = btn.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
+document.getElementById('fillColor').addEventListener('input', e => {
+  const hex = e.target.value;
+  fillRGB = [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16)
+  ];
+});
+
+document.getElementById('gridToggle').addEventListener('change', e => {
+  gridHelper.visible = e.target.checked;
+});
+
+let dragDepth = 0;
+window.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragDepth++;
+  dropEl.classList.add('on');
+});
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('dragleave', () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) dropEl.classList.remove('on');
+});
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0;
+  dropEl.classList.remove('on');
+  if (e.dataTransfer && e.dataTransfer.files.length) {
+    loadFiles(e.dataTransfer.files);
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
